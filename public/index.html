@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO</title>
+    <style>
+    </style>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="lib/impact/global.js"></script>
+    <script type="text/javascript">
+      "use strict";
+
+      ig.module(
+        'tankattack'
+      ).
+      requires(
+        'tankattack.tankattack',
+        'impact.impact'
+      ).
+      defines(function() {
+        ig.global.debug = true;
+        ig.setNocache(true);
+
+        ig.main("#canvas", TankAttack, 60, 640, 480, 1);
+      });
+    </script>
+  </head>
+  <body style="background-color:#fff;">
+    <div class="body">
+      <div class="screen" style="width:640px;height:480px;margin:50px auto 0px;border:1px solid #fff;cursor:crosshair;background-color:#fff;">
+        <canvas id="canvas" width="640" height="480"></canvas>
+      </div>
+    </div>
+  </body>
+</html>
