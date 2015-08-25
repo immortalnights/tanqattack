@@ -3,6 +3,24 @@
   <head>
     <title>Socket.IO</title>
     <style>
+      table
+      {
+        background-image:url('gfx/tileset.png');
+        background-repeat:no-repeat;
+        background-position:0px 0px;
+        height:32px;
+        padding:0px;
+        border-spacing:0px;
+        border-collapse:separate;
+      }
+      td
+      {
+        border-left:1px solid red;
+        border-right:1px solid blue;
+        width:30px;
+        text-align:center;
+        overflow:none;
+      }
     </style>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="lib/impact/global.js"></script>
@@ -27,8 +45,16 @@
   <body style="background-color:#fff;">
     <div class="body">
       <div class="screen" style="width:640px;height:480px;margin:50px auto 0px;border:1px solid #fff;cursor:crosshair;background-color:#fff;">
+        <!--<img style="position:absolute;opacity:0.4;" src="gfx/complete_level_1.png" />-->
         <canvas id="canvas" width="640" height="480"></canvas>
       </div>
+      <table>
+        <tr>
+          <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
+          <td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td><td>20</td>
+          <td>21</td><td>22</td><td>23</td><td>24</td><td>25</td><td>26</td><td>27</td><td>28</td><td>29</td><td>30</td>
+        </tr>
+      </table>
     </div>
   </body>
 </html>
