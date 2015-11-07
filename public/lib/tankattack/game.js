@@ -1,208 +1,266 @@
 ig.module(
-  'tankattack.game'
+	'tankattack.game'
 ).
 requires(
-  'impact.game',
-  'impact.input',
-  'tankattack.tank'
+	'impact.game',
+	'impact.input',
+	'tankattack.controls',
+	'tankattack.hud',
+	'tankattack.satentity',
+	'tankattack.tank',
+	'tankattack.block',
+	'tankattack.tiledtoimpact'
 ).
 defines(function() {
-  "use strict";
+	"use strict";
 
-  // Move to some options/configuration
-  var KeyMapping =
-  {
-    'up': ig.KEY.W,
-    'down': ig.KEY.S,
-    'left': ig.KEY.A,
-    'right': ig.KEY.D,
-    'fire': ig.KEY.SPACE
-  };
+	
+	window.TankAttack = ig.Game.extend({
+		clearColor: '#fff',
 
-  
-  window.TankAttack = ig.Game.extend({
-    clearColor: '#fff',
+		levelNumber: '01',
 
-    socket: null,
-    // valid player actions (movement and abilities )
-    actions: [ 'up', 'down', 'left', 'right', 'fire' ],
+		socket: null,
+		controls: null,
 
-    init: function()
-    {
-      var level_1 =
-        {
-          entities: [],
-          layer: [
-            {
-              name: "background1",
-              tilesetName: "gfx/tileset.png",
-              repeat: false,
-              distance: 1,
-              tilesize: 32,
-              foreground: false,
-              data: [
-                [ 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3],
-                [ 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5, 7, 9,10, 5, 5, 5, 5, 5, 7, 9,10, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5,11,13,14, 5, 5, 5, 5, 5,11,13,14, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6],
-                [ 4, 5, 7, 8, 9,10, 5,18,19, 7, 9,10,18,19, 5, 5, 7, 9,10, 6],
-                [ 4, 5,27,25,28,21, 5,20,21,27,28,21,20,21, 5, 7,24,28,21, 6],
-                [ 4, 5,11,26,28,21, 5,20,21,27,28,21,20,21, 5,27,25,28,21, 6],
-                [ 4, 5, 5,11,13,14, 5,22,23,11,13,14,22,23, 5,11,12,13,14, 6],
-                [ 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5, 7, 9,10, 5, 5, 5, 5, 5, 7, 9,10, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5,11,13,14, 5, 5, 5, 5, 5,11,13,14, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6],
-                [ 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6],
-                [15,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,17]
-              ]
-            }
-          ]
-        };
-      
-      this.loadLevel(level_1);
+		configuration: {
+			drawEnitityPosition: false,
+			drawBoundingBoxes: false,
+			drawPrimitives: false
+		},
 
-      // bind the player controls
-      for (var index = 0, length = this.actions.length; index < length; ++index)
-      {
-      	var action = this.actions[index];
-      	var key = KeyMapping[action];
+		startPositions: [
+			{x: 64, y: 64},
+			{x: 545, y: 385},
+			{x: 64, y: 385},
+			{x: 545, y: 64}
+		],
 
-      	if (key)
-      	{
-		      ig.input.bind(key, action);
-		      console.log("Bound", key, "for", action);
-		    }
-	    }
+		init: function()
+		{
+			xhr('lib/tankattack/levels/level1.json').get(this.onLevelLoaded.bind(this));
+			
+			this.controls = new Controls(2),
+			this.hud = new Hud({ height: 46 });
 
-      // var bg = new ig.BackgroundMap( 16, data, 'media/tileset.png' );
+			ig.input.bind(ig.KEY.MOUSE1, 'mouse1');
 
-      // connect to the server
-      this.socket = io();
+			// var bg = new ig.BackgroundMap( 16, data, 'media/tileset.png' );
+			var io = io || null;
 
-      // tie the socket events
-      this.socket.on('connect', this.onConnect.bind(this));
-      this.socket.on('disconnect', this.onDisconnect.bind(this));
-      this.socket.on('error', this.onError.bind(this));
+			// connect to the server
+			if (io)
+			{
+				this.socket = io();
 
-      this.socket.on('player connected', this.onPlayerConnected.bind(this));
-      this.socket.on('player disconnected', this.onPlayerDisconnected.bind(this));
+				// tie the socket events
+				this.socket.on('connect', this.onConnect.bind(this));
+				this.socket.on('disconnect', this.onDisconnect.bind(this));
+				this.socket.on('error', this.onError.bind(this));
 
-      this.socket.on('update', this.onUpdate.bind(this));
+				this.socket.on('player connected', this.onPlayerConnected.bind(this));
+				this.socket.on('player disconnected', this.onPlayerDisconnected.bind(this));
 
-      // setInterval(function() { console.log(that.tank.pos, that.tank.vel, that.tank.angle); }, 2000);
-    },
+				this.socket.on('update', this.onUpdate.bind(this));
+			}
+		},
 
-    // socket IO events
-    onConnect: function(a, b, c)
-    {
-      console.log("Received 'connect'", a, b, c);
-    },
+		getConfigutation: function(key)
+		{
+			return (this.configuration && this.configuration[key]) ? this.configuration[key] : undefined;
+		},
 
-    onDisconnect: function()
-    {
+		onLevelLoaded: function(status, tiledLevel)
+		{
+			if (status === 200 || status === 304)
+			{
+				var converter = new TiledToImpact();
+				var level = converter.convert(tiledLevel);
+				ig.game.loadLevel(level);
 
-    },
+				var playerCount = 4;
+				for (var playerIndex = 0; playerIndex < playerCount; ++playerIndex)
+				{
+					var startPosition = this.startPositions[playerIndex];
 
-    onError: function(a,b, c)
-    {
-      console.log("Received 'error'", a, b, c);
-    },
+					var settings = {
+						playerId: playerIndex
+					};
 
-    onPlayerConnected: function(data)
-    {
-      console.log("Received 'player connected'", data);
+					this.spawnEntity(Tank, startPosition.x, startPosition.y, settings);
+				}
+			}
+			else
+			{
+				console.error("Failed to load level");
+			}
+		},
 
-      for (var index = 0, length = data.length; index < length; ++index)
-      {
-        this.spawnEntity(Tank, 0, 0, data[index]);
-      }
-    },
-    
-    onPlayerDisconnected: function(data)
-    {
-      console.log("Received 'player disconnected'", data);
+		// socket IO events
+		onConnect: function(a, b, c)
+		{
+			console.log("Received 'connect'", a, b, c);
+		},
 
-      for (var index = 0, length = this.entities.length; index < length; ++index)
-      {
-        var tank = this.entities[index];
+		onDisconnect: function()
+		{
 
-        if (tank.name === data.name)
-        {
-          // TODO explode!
-          tank.kill();
-        }
-      }
-    },
+		},
 
-    onUpdate: function(data)
-    {
-      // console.log('onUpdate', data);
+		onError: function(a,b, c)
+		{
+			console.log("Received 'error'", a, b, c);
+		},
 
-      for (var player_index = 0, total_players = data.players.length; player_index < total_players; ++player_index)
-      {
-        var player = data.players[player_index];
+		onPlayerConnected: function(data)
+		{
+			console.log("Received 'player connected'", data);
 
-        // find the tank for the player
-        var ok = false;
-        for (var index = 0, length = this.entities.length; index < length; ++index)
-        {
-          var tank = this.entities[index];
+			for (var index = 0, length = data.length; index < length; ++index)
+			{
+				this.spawnEntity(Tank, 0, 0, data[index]);
+			}
+		},
+		
+		onPlayerDisconnected: function(data)
+		{
+			console.log("Received 'player disconnected'", data);
 
-          if (tank.name == player.name)
-          {
-            tank.vel = player.tank.vel;
+			for (var index = 0, length = this.entities.length; index < length; ++index)
+			{
+				var tank = this.entities[index];
 
-            ok = true;
-            // console.log("Update", tank.name, tank.vel, player.tank.vel);
-          }
-        }
+				if (tank.name === data.name)
+				{
+					// TODO explode!
+					tank.kill();
+				}
+			}
+		},
 
-        if (ok == false)
-        {
-          console.log("Failed to find tank for player", player.name);
-        }
-      }
-    },
+		onUpdate: function(data)
+		{
+			// console.log('onUpdate', data);
 
-    // impact
-    update: function()
-    {
-      // Socket controls
-      // Movement controls sends an array of key-release and key-press values.
-      // An array must be used to handle multiple key-down/release in a single frame
+			for (var player_index = 0, total_players = data.players.length; player_index < total_players; ++player_index)
+			{
+				var player = data.players[player_index];
 
-      // iterate over the actions
-      var pressed = [];
-      var released = [];
+				// find the tank for the player
+				var ok = false;
+				for (var index = 0, length = this.entities.length; index < length; ++index)
+				{
+					var tank = this.entities[index];
 
-      for (var index = 0, length = this.actions.length; index < length; ++index)
-      {
-      	var action = this.actions[index];
+					if (tank.name == player.name)
+					{
+						tank.vel = player.tank.vel;
 
-      	// handle the action specific key being pressed
-	      if (ig.input.pressed(action))
-	      {
-	        pressed.push(action);
-	      }
+						ok = true;
+						// console.log("Update", tank.name, tank.vel, player.tank.vel);
+					}
+				}
 
-      	// handle the action specific key being released
-	      if (ig.input.released(action))
-	      {
-	        released.push(action);
-	      }
-	    }
+				if (ok == false)
+				{
+					console.log("Failed to find tank for player", player.name);
+				}
+			}
+		},
 
-      if (0 !== pressed.length || 0 !== released.length)
-      {
-      	var control_update = { pressed: pressed, released: released };
-      	console.log(control_update);
-        this.socket.emit('player control', control_update);
-      }
+		// impact
+		update: function()
+		{
+			// Socket controls
+			// Movement controls sends an array of key-release and key-press values.
+			// An array must be used to handle multiple key-down/release in a single frame
 
-      this.parent();
-    }
+			// if (0 !== pressed.length || 0 !== released.length)
+			// {
+			// 	var control_update = { pressed: pressed, released: released };
 
-  });
+			// 	if (this.socket)
+			// 	{
+			// 		this.socket.emit('player control', control_update);
+			// 	}
+			// 	else
+			// 	{
+			// 	}
+			// }
+
+			// if (ig.input.pressed('buildCollisionMap'))
+			// {
+			// 	console.log("Collision map!");
+			// 	var rawData = ig.system.context.getImageData(0, 0, ig.system.width, ig.system.height);
+			// 	console.log(rawData);
+			// }
+
+			if (ig.input.pressed('mouse1'))
+			{
+				var pix = { x: ig.input.mouse.x, y: ig.input.mouse.y};
+				var rawData = ig.system.context.getImageData(pix.x, pix.y, 1, 1);
+				console.log("Coordinations", ig.input.mouse);
+			}
+
+			this.parent();
+
+			this.hud.update();
+		},
+
+		draw: function()
+		{
+			this.parent();
+
+			this.hud.draw();
+
+			// var player = this.getEntityByName('localtank');
+			// if (player)
+			// {
+			// 	var font = new ig.Font('gfx/font.png');
+			// 	var text1 = "Acc " + player.accel.x + ", " + player.accel.y;
+			// 	var text2 = "Vel " + player.vel.x + ", " + player.vel.y;
+			// 	font.draw(text1, 20, 400);
+			// 	font.draw(text2, 20, 420);
+			// }
+		},
+
+		XcheckEntities: function()
+		{
+			var response = new SAT.Response();
+
+			// For now, check everything against everything
+			for (var entityIndex = 0; entityIndex < this.entities.length; ++entityIndex)
+			{
+				var entity = this.entities[entityIndex];
+
+				// if (entity instanceof Block)
+				{
+					// Don't check block as origin
+				}
+				// else
+				{
+					for (var opponentIndex = 0; opponentIndex < this.entities.length; ++opponentIndex)
+					{
+						var opponent = this.entities[opponentIndex];
+
+						if (entity === opponent)
+						{
+							// Skip self
+						}
+						else
+						{
+							response.clear();
+							var collided = entity.check(opponent, response);
+
+							if (collided)
+							{
+								entity.collideWith(opponent, response);
+								opponent.collideWith(entity, response);
+							}
+						}
+					}
+				}
+			}
+		}
+	});
 });

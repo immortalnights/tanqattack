@@ -5,7 +5,8 @@
     <style>
       table
       {
-        background-image:url('gfx/tileset.png');
+      	table-layout: fixed;
+        background-image:url('gfx/tileset3.png');
         background-repeat:no-repeat;
         background-position:0px 0px;
         height:32px;
@@ -21,11 +22,23 @@
         text-align:center;
         overflow:none;
       }
+
+      canvas
+      {
+        background-image:url('gfx/floor3.png');
+      }
     </style>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="/lib/xhr.js"></script>
+    <script type="text/javascript" src="/lib/tiledutilities.js"></script>
+		<script type="text/javascript" src="/venders/SAT.js"></script>
     <script type="text/javascript" src="lib/impact/global.js"></script>
     <script type="text/javascript">
       "use strict";
+
+      window.trace = console.log.bind(console);
+      window.debug = console.debug.bind(console);
+
 
       ig.module(
         'tankattack'
@@ -36,19 +49,27 @@
       ).
       defines(function() {
         ig.global.debug = true;
-        ig.setNocache(true);
+        // ig.setNocache(true);
 
-        ig.main("#canvas", TankAttack, 60, 640, 480, 1);
+        // Override the default clear function to preserve the background image
+        ig.System.inject({
+          clear: function()
+          {
+            this.context.clearRect(0, 0, this.realWidth, this.realHeight);
+          }
+        });
+
+        ig.main("#canvas", TankAttack, 60, 640, 512, 1);
       });
     </script>
   </head>
-  <body style="background-color:#fff;">
+  <body style="background-color:#ddd;">
     <div class="body">
-      <div class="screen" style="width:640px;height:480px;margin:50px auto 0px;border:1px solid #fff;cursor:crosshair;background-color:#fff;">
-        <!--<img style="position:absolute;opacity:0.4;" src="gfx/complete_level_1.png" />-->
-        <canvas id="canvas" width="640" height="480"></canvas>
+      <div class="screen" style="width:640px;height:512px;margin:10px auto 0px;border:1px solid #fff;cursor:crosshair;background-color:#fff;">
+        <!-- <img style="position:absolute;opacity:0.4;" src="gfx/fullscreen.png" /> -->
+        <canvas id="canvas" width="640" height="512"></canvas>
       </div>
-      <table>
+      <table style="display:none">
         <tr>
           <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
           <td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td><td>20</td>
