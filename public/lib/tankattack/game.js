@@ -9,11 +9,18 @@ requires(
 	'tankattack.satentity',
 	'tankattack.tank',
 	'tankattack.block',
+	'tankattack.powerup',
 	'tankattack.tiledtoimpact'
 ).
 defines(function() {
 	"use strict";
 
+	function rand(min, max)
+	{
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
+	var powerupSpawnTime = 0.1;
 	
 	window.TankAttack = ig.Game.extend({
 		clearColor: '#fff',
@@ -36,12 +43,23 @@ defines(function() {
 			{x: 545, y: 64}
 		],
 
+		/** array of tanks, player or CPU */
+		tanks: null,
+		/** tank weapon recharge timer */
+		weaponEnergyRechargeTimer: new ig.Timer(),
+
+		/** powerup spawn timer */
+		powerupSpawnTimer: new ig.Timer(powerupSpawnTime),
+		/** powerup duration timer */
+		powerDownTimer: new ig.Timer(),
+
 		init: function()
 		{
 			xhr('lib/tankattack/levels/level1.json').get(this.onLevelLoaded.bind(this));
 			
 			this.controls = new Controls(2),
 			this.hud = new Hud({ height: 46 });
+			this.tanks = [];
 
 			ig.input.bind(ig.KEY.MOUSE1, 'mouse1');
 
@@ -74,6 +92,8 @@ defines(function() {
 		{
 			if (status === 200 || status === 304)
 			{
+				this.tanks = [];
+
 				var converter = new TiledToImpact();
 				var level = converter.convert(tiledLevel);
 				ig.game.loadLevel(level);
@@ -87,7 +107,8 @@ defines(function() {
 						playerId: playerIndex
 					};
 
-					this.spawnEntity(Tank, startPosition.x, startPosition.y, settings);
+					var tank = this.spawnEntity(Tank, startPosition.x, startPosition.y, settings);
+					this.tanks.push(tank);
 				}
 			}
 			else
@@ -168,6 +189,30 @@ defines(function() {
 			}
 		},
 
+		applyPowerup: function(tank, powerup)
+		{
+			this.poweredUp = tank;
+			powerup.applyTo(tank);
+
+			this.powerDownTimer.set(powerup.duration);
+
+			powerup.kill();
+		},
+
+		/**
+		 * remove a powerup applied to a tank
+		 *
+		 */
+		powerDownTank: function()
+		{
+			if (this.poweredUp)
+			{
+				this.poweredUp.resetStats();
+
+				this.poweredUp = null;
+			}
+		},
+
 		// impact
 		update: function()
 		{
@@ -195,6 +240,8 @@ defines(function() {
 			// 	console.log(rawData);
 			// }
 
+			this.parent();
+
 			if (ig.input.pressed('mouse1'))
 			{
 				var pix = { x: ig.input.mouse.x, y: ig.input.mouse.y};
@@ -202,8 +249,51 @@ defines(function() {
 				console.log("Coordinations", ig.input.mouse);
 			}
 
-			this.parent();
+			// recharge tank weapons
+			if (this.weaponEnergyRechargeTimer.delta() > 0)
+			{
+				this.weaponEnergyRechargeTimer.set(0.20);
+				for (var tankIndex = 0; tankIndex < this.tanks.length; ++tankIndex)
+				{
+					this.tanks[tankIndex].weaponRecharge(1);
+				}
+			}
 
+			if (this.powerupSpawnTimer.delta() > 0)
+			{
+				// Don't spawn more then one powerup
+				var powerup = this.getEntityByName('powerup');
+				if (!powerup)
+				{
+					this.powerupSpawnTimer.set(powerupSpawnTime);
+
+					var levelMap = this.backgroundMaps[0];
+					var tilesize = levelMap.tilesize;
+
+					var x = rand(tilesize, ig.system.width);
+					var y = rand(tilesize*2, (levelMap.height-1)*tilesize);
+
+					var tile = levelMap.getTile(x, y);
+					// trace("Tile at", x, y, tile);
+
+					if (0 === tile)
+					{
+						var tx = Math.floor(x / tilesize) * tilesize;
+						var ty = Math.floor(y / tilesize) * tilesize - (tilesize/2)+1;
+
+						this.spawnEntity(Powerup, tx, ty);
+						
+						ig.game.sortEntitiesDeferred();
+					}
+				}
+			}
+
+			if (this.powerDownTimer.delta() > 0)
+			{
+				this.powerDownTank();
+			}
+
+			// update the Hud
 			this.hud.update();
 		},
 
@@ -212,55 +302,6 @@ defines(function() {
 			this.parent();
 
 			this.hud.draw();
-
-			// var player = this.getEntityByName('localtank');
-			// if (player)
-			// {
-			// 	var font = new ig.Font('gfx/font.png');
-			// 	var text1 = "Acc " + player.accel.x + ", " + player.accel.y;
-			// 	var text2 = "Vel " + player.vel.x + ", " + player.vel.y;
-			// 	font.draw(text1, 20, 400);
-			// 	font.draw(text2, 20, 420);
-			// }
-		},
-
-		XcheckEntities: function()
-		{
-			var response = new SAT.Response();
-
-			// For now, check everything against everything
-			for (var entityIndex = 0; entityIndex < this.entities.length; ++entityIndex)
-			{
-				var entity = this.entities[entityIndex];
-
-				// if (entity instanceof Block)
-				{
-					// Don't check block as origin
-				}
-				// else
-				{
-					for (var opponentIndex = 0; opponentIndex < this.entities.length; ++opponentIndex)
-					{
-						var opponent = this.entities[opponentIndex];
-
-						if (entity === opponent)
-						{
-							// Skip self
-						}
-						else
-						{
-							response.clear();
-							var collided = entity.check(opponent, response);
-
-							if (collided)
-							{
-								entity.collideWith(opponent, response);
-								opponent.collideWith(entity, response);
-							}
-						}
-					}
-				}
-			}
 		}
 	});
 });

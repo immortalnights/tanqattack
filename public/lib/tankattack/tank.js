@@ -15,6 +15,7 @@ defines(function() {
 
   window.Tank = ig.Entity.extend({
     typeName: 'Tank',
+    zIndex: 10,
     size: { radius: 16, x: 32, y: 32 },
     animSheet: new ig.AnimationSheet('gfx/tank_sprite_sheet.png', 32, 34), 
     angle: 0,
@@ -31,14 +32,21 @@ defines(function() {
     /** weapon re-fire cooldown timer */
     weaponCooldown: null,
 
-    /** SAT directional vector */
+    /** current SAT directional vector */
     directionalVector: null,
+    /** previous SAT directional vector */
+    previousDirectionalVector: null,
 
-    type: ig.Entity.TYPE.B,
+    type: ig.Entity.TYPE.A,
     checkAgainst: ig.Entity.TYPE.BOTH,
     collides: ig.Entity.COLLIDES.ACTIVE,
 
     controlMap: null,
+
+    sfx: {
+      hit: new ig.Sound('sfx/tank_hit.mp3'),
+      destroyed: new ig.Sound('sfx/tank_destroyed.mp3')
+    },
 
     init: function(x, y, settings)
     {
@@ -53,8 +61,9 @@ defines(function() {
 
       this.name = 'player' + this.playerId,
 
-      this.weaponCooldown = new ig.Timer();
+      this.weaponCooldown = new ig.Timer(0.3);
       this.directionalVector = new SAT.Vector(0, 0);
+      this.previousDirectionalVector = new SAT.Vector(0, -1);
 
       // Keyboard controls are only valid for the first two players
       if (this.playerId < 2)
@@ -100,44 +109,68 @@ defines(function() {
       trace(this.controlMap);
     },
 
+    weaponRecharge: function(amount)
+    {
+      if (this.weapon < 100)
+      {
+        this.weapon += amount;
+      }
+    },
+
     fire: function()
     {
       // Prevent excessive ROF
       if (this.weaponCooldown.delta() < 0)
       {
+        // trace("Weapon has not reloaded", this.weaponCooldown.delta());
       }
       else if (this.weapon < weaponEnergyUse)
       {
+        // trace("Not enough energy to fire weapon", this.weapon, weaponEnergyUse);
       }
       else
       {
         // reset weapon cooldown
         this.weaponCooldown.set(0.30);
+        // consume weapon energy
         this.weapon -= weaponEnergyUse;
 
-        var vel = 380;
-        var dir = [{ x: vel, y: 0 },
-          { x: -vel, y: 0 },
-          { x: 0, y: vel },
-          { x: 0, y: -vel }
-        ];
+        // initialize the bullet vector
+        var bulletVector = new SAT.Vector();
+        bulletVector.copy(this.previousDirectionalVector);
 
+        // initialize the bullets settings
         var bulletSettings = {
           origin: this,
-          vel: null
+          directionalVector: bulletVector,
+          frameStart: this.playerId
         };
 
-        bulletSettings.vel = dir[0];
-        ig.game.spawnEntity(Bullet, this.pos.x+(this.size.x/2), this.pos.y+(this.size.y/2), bulletSettings);
-        
-        bulletSettings.vel = dir[1];
-        ig.game.spawnEntity(Bullet, this.pos.x+(this.size.x/2), this.pos.y+(this.size.y/2), bulletSettings);
-        
-        bulletSettings.vel = dir[2];
-        ig.game.spawnEntity(Bullet, this.pos.x+(this.size.x/2), this.pos.y+(this.size.y/2), bulletSettings);
-        
-        bulletSettings.vel = dir[3];
-        ig.game.spawnEntity(Bullet, this.pos.x+(this.size.x/2), this.pos.y+(this.size.y/2), bulletSettings);
+        // initialize the bullets position
+        var bulletPosition = {
+          x: this.pos.x+(this.size.x/2),
+          y: this.pos.y+(this.size.y/2)
+        };
+
+        // Spawn the bullet entity
+        ig.game.spawnEntity(Bullet, bulletPosition.x, bulletPosition.y, bulletSettings);
+      }
+    },
+
+    resetStats: function()
+    {
+
+    },
+
+    receiveDamage: function(damage)
+    {
+      this.sfx.hit.play();
+
+      this.parent(damage);
+
+      if (this.health < 0)
+      {
+        this.sfx.destroyed.play();
       }
     },
 
@@ -154,7 +187,7 @@ defines(function() {
         // TODO Network input
       }
 
-      // Set the entity velocity based on the directionalVector
+      // Set the entity velocity based on the current directionalVector
       this.vel.x = this.directionalVector.x * tankMaximumVelocity;
       this.vel.y = this.directionalVector.y * tankMaximumVelocity;
 
@@ -190,6 +223,11 @@ defines(function() {
       this.directionalVector.x = xDirection;
       this.directionalVector.y = yDirection;
 
+      if (0 != this.directionalVector.x || 0 != this.directionalVector.y)
+      {
+        this.previousDirectionalVector.copy(this.directionalVector);
+      }
+
       if (ig.input.state(this.controlMap['fire']))
       {
         // This won't be handled locally when the network code has been added
@@ -200,15 +238,39 @@ defines(function() {
     setAnimFromDirection: function()
     {
       // TODO set from directionalVelocity
-      var directionalVectorString = this.directionalVector.x+''+this.directionalVector.y;
+      var directionalVectorString = this.previousDirectionalVector.x+''+this.previousDirectionalVector.y;
       this.currentAnim = this.anims[directionalVectorString];
+    },
+
+    check: function(other)
+    {
+      if (other instanceof Powerup)
+      {
+        ig.game.applyPowerup(this, other);
+      }
+      else if (other instanceof Tank)
+      {
+        var sat = new SAT.Response();
+        if (calculateSATCollision(this.primitive, other.primitive, sat))
+        {
+          var vector = new SAT.Vector(this.pos.x, this.pos.y)
+          vector.sub(sat.overlapV);
+
+          this.pos.x = vector.x;
+          this.pos.y = vector.y;
+        }
+      }
+      else
+      {
+
+      }
     },
 
     /**
      * resolves Block or Tank collisions. Bullet collisions are ignored (handled by the bullet)
      *
      */
-    collideWith: function(other, response)
+    collideWith: function(other, sat)
     {
       if (other instanceof Bullet)
       {
@@ -217,7 +279,7 @@ defines(function() {
       else if (other instanceof Tank)
       {
         // var vector = new SAT.Vector(this.pos.x, this.pos.y)
-        // vector.add(response.overlapV);
+        // vector.add(sat.overlapV);
         
         // FIXME - impactjs only collides one entity with another once per frame, so, when two 
         // tanks collide it's not possible to know which tank is moving towards the other without 
@@ -231,7 +293,7 @@ defines(function() {
       else if (other instanceof Block)
       {
         var vector = new SAT.Vector(this.pos.x, this.pos.y)
-        vector.sub(response.overlapV);
+        vector.sub(sat.overlapV);
 
         this.pos.x = vector.x;
         this.pos.y = vector.y;

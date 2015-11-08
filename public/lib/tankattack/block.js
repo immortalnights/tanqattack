@@ -11,9 +11,9 @@ defines(function() {
 		typeName: 'Block',
 		hitColor: '#f00',
 
-		type: ig.Entity.TYPE.A,
+		type: ig.Entity.TYPE.NONE,
 		checkAgainst: ig.Entity.TYPE.NONE,
-		collides: ig.Entity.COLLIDES.FIXED,
+		collides: ig.Entity.COLLIDES.PASSIVE,
 
 		init: function(x, y, settings)
 		{

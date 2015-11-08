@@ -64,24 +64,53 @@ defines(function() {
       }
     },
 
-    /** Bullets collide against Tanks or Bullets */
-    check: function(other)
+    check: function(other, sat)
     {
+      trace(this.typeName, "vs", other.typeName, "||", this.name, "vs", other.name);
       return;
     },
 
-    collideWith: function(other, response)
+    collideWith: function(other, sat)
     {
       debugger;
     }
   });
   
+  // /**
+  //  * Copy of ig.Entity.checkPair but including SAT collision resolution detection
+  //  *
+  //  */
+  // ig.Entity.checkPair = function (a, b)
+  // {
+  //   if (a.checkAgainst & b.type)
+  //   {
+  //     a.check(b);
+  //   }
+  //   if (b.checkAgainst & a.type)
+  //   {
+  //     b.check(a);
+  //   }
+  //   if (a.collides && b.collides && a.collides + b.collides > ig.Entity.COLLIDES.ACTIVE)
+  //   {
+  //     ig.Entity.solveCollision(a, b);
+  //   }
+  // };
+  
   ig.Entity.solveCollision = function(a, b)
   {
     var response = new SAT.Response();
 
-    if (calculateSATCollision(a.primitive, b.primitive, response))
+    if (!a.primitive)
     {
+
+    }
+    else if (!b.primitive)
+    {
+
+    }
+    else if (calculateSATCollision(a.primitive, b.primitive, response))
+    {
+      // trace(a.typeName, "vs", b.typeName);
       a.collideWith(b, response);
       b.collideWith(a, response);
     }
