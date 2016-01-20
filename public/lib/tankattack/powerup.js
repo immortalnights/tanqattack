@@ -7,14 +7,6 @@ requires(
 defines(function() {
 	"use strict";
 
-// Shield (4)
-// Bullet split
-// No bounce
-// Speed
-// Invisible (10)
-// bullet Long life
-// Slow and strong
-
 	window.Powerup = ig.Entity.extend({
 		typeName: 'Powerup',
 		name: "powerup",
@@ -31,8 +23,10 @@ defines(function() {
 
 		duration: 1,
 
-		tankSfx: new ig.Sound('sfx/powerup_tank.mp3'),
-		weaponSfx: new ig.Sound('sfx/powerup_weapon.mp3'),
+		sfx: {
+			tank: new ig.Sound('sfx/powerup_tank.mp3'),
+			turret: new ig.Sound('sfx/powerup_weapon.mp3'),
+		},
 
 		init: function(x, y, settings)
 		{
@@ -45,9 +39,40 @@ defines(function() {
 
 		applyTo: function(tank)
 		{
+			switch (this.powerup)
+			{
+				case Powerup.TYPE.SHIELD:
+				{
+					this.sfx.tank.play();
+					break;
+				}
+				case Powerup.TYPE.INVISIBILITY:
+				{
+					this.sfx.tank.play();
+					break;
+				}
+				case Powerup.TYPE.SPEED:
+				{
+					this.sfx.tank.play();
+					break;
+				}
+				case Powerup.TYPE.BULLETSPLIT:
+				{
+					this.sfx.turret.play();
+					break;
+				}
+				case Powerup.TYPE.NOBOUNCE:
+				{
+					this.sfx.turret.play();
+					break;
+				}
+				case Powerup.TYPE.BULLETLIFE:
+				{
+					this.sfx.turret.play();
+					break;
+				}
+			}
 
-
-			this.tankSfx.play();
 		},
 
 		update: function()
@@ -65,4 +90,18 @@ defines(function() {
 		// 	trace("Collided with powerup...");
 		// }
 	});
+	window.Powerup.TYPE = {
+		// Adds a shield
+		SHIELD: 0,
+		// Makes tank invisible (to other players for LAN/Internet, to all in local)
+		INVISIBILITY: 1,
+		// Increases tank speed
+		SPEED: 2,
+		// Increases bullet velocity
+		BULLETSPLIT: 3,
+		// Prevents bullets from bouncing
+		NOBOUNCE: 4,
+		// Increases bullet life
+		BULLETLIFE: 5
+	};
 });

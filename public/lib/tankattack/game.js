@@ -207,7 +207,7 @@ defines(function() {
 		{
 			if (this.poweredUp)
 			{
-				this.poweredUp.resetStats();
+				this.poweredUp.resetAttributes();
 
 				this.poweredUp = null;
 			}
@@ -255,7 +255,7 @@ defines(function() {
 				this.weaponEnergyRechargeTimer.set(0.20);
 				for (var tankIndex = 0; tankIndex < this.tanks.length; ++tankIndex)
 				{
-					this.tanks[tankIndex].weaponRecharge(1);
+					this.tanks[tankIndex].turret.recharge(1);
 				}
 			}
 

@@ -10,7 +10,7 @@ defines(function() {
 
 	function formatNumber(value)
 	{
-		var str = '' + value;
+		var str = '' + Math.floor(value);
 
 		while (str.length < 3)
 		{
@@ -63,7 +63,7 @@ defines(function() {
 				if (playerEntity)
 				{
 					this.stats[playerIndex].energy = formatNumber(playerEntity.health);
-					this.stats[playerIndex].gun    = formatNumber(playerEntity.weapon);
+					this.stats[playerIndex].gun    = formatNumber(playerEntity.turret.energy);
 				}
 				else
 				{

@@ -8,38 +8,122 @@ requires(
 defines(function() {
   "use strict";
 
-  /** Maximum tank velocity */
-  var tankMaximumVelocity = 90;
-  /** gun energy use per shot */
-  var weaponEnergyUse = 10;
+  var DefaultAttributes = {
+    tank: {
+      velocity: 90
+    },
+    
+    turret: {
+      velocity: 280,
+      drain: 10,
+      recharge: 1,
+      cooldown: 0.3,
+      split: false,
+      bouncy: true,
+      life: 0,
+      damage: 9
+    }
+  };
+
+  window.Turret = ig.Class.extend({
+    typeName: 'Turret',
+
+    /** turret energy */
+    energy: 100,
+    /** turret re-fire cooldown timer */
+    cooldown: null,
+
+    attributes: ig.copy(DefaultAttributes.turret),
+
+    init: function(owner)
+    {
+      this.cooldown = new ig.Timer(0.3);
+    },
+
+    fire: function(owner)
+    {
+      // Prevent excessive ROF
+      if (this.cooldown.delta() < 0)
+      {
+        // trace("Turret has not reloaded", this.cooldown.delta());
+      }
+      else if (this.energy < this.attributes.drain)
+      {
+        // trace("Not enough energy to fire turret", this.turret, this.attributes.drain);
+      }
+      else
+      {
+        // reset turret cooldown
+        this.cooldown.set(this.attributes.cooldown);
+        // consume turret energy
+        this.energy -= this.attributes.drain;
+
+        // initialize the bullet vector
+        var bulletVector = new SAT.Vector();
+        bulletVector.copy(owner.previousDirectionalVector);
+
+        // initialize the bullets settings
+        var bulletSettings = {
+          origin: owner,
+          directionalVector: bulletVector,
+          frameStart: owner.playerId
+        };
+
+        // initialize the bullets position
+        var pos = {
+          x: owner.pos.x+(owner.size.x/2),
+          y: owner.pos.y+(owner.size.y/2)
+        };
+        // console.log("Spawn bullet at", pos);
+
+        // Spawn the bullet entity
+        ig.game.spawnEntity(Bullet, pos.x, pos.y, bulletSettings);
+      }
+    },
+
+    recharge: function(delta)
+    {
+      if (this.energy < 100)
+      {
+        this.energy += delta * this.attributes.recharge;
+      }
+    },
+
+    resetAttributes: function()
+    {
+      attributes: ig.copy(DefaultAttributes.turret);
+    }
+  });
 
   window.Tank = ig.Entity.extend({
     typeName: 'Tank',
+
+    type: ig.Entity.TYPE.A,
+    checkAgainst: ig.Entity.TYPE.BOTH,
+    collides: ig.Entity.COLLIDES.ACTIVE,
+
     zIndex: 10,
     size: { radius: 16, x: 32, y: 32 },
     animSheet: new ig.AnimationSheet('gfx/tank_sprite_sheet.png', 32, 34), 
     angle: 0,
 
-    maxVel: {
-      x: tankMaximumVelocity,
-      y: tankMaximumVelocity
-    },
 
     /** health */
     health: 100,
-    /** weapon energy */
-    weapon: 100,
-    /** weapon re-fire cooldown timer */
-    weaponCooldown: null,
+
+    turret: null,
+
+    maxVel: {
+      x: 0,
+      y: 0
+    },
+
+    attributes: ig.copy(DefaultAttributes.tank),
 
     /** current SAT directional vector */
     directionalVector: null,
     /** previous SAT directional vector */
     previousDirectionalVector: null,
-
-    type: ig.Entity.TYPE.A,
-    checkAgainst: ig.Entity.TYPE.BOTH,
-    collides: ig.Entity.COLLIDES.ACTIVE,
 
     controlMap: null,
 
@@ -61,7 +145,6 @@ defines(function() {
 
       this.name = 'player' + this.playerId,
 
-      this.weaponCooldown = new ig.Timer(0.3);
       this.directionalVector = new SAT.Vector(0, 0);
       this.previousDirectionalVector = new SAT.Vector(0, -1);
 
@@ -71,8 +154,12 @@ defines(function() {
         this.initializeControls();
       }
 
+      this.turret = new Turret();
+
       this.initializeAnimation();
       this.initializePrimitive();
+
+      this.resetAttributes();
 
       console.log("New tank", x, y);
     },
@@ -109,57 +196,20 @@ defines(function() {
       trace(this.controlMap);
     },
 
-    weaponRecharge: function(amount)
-    {
-      if (this.weapon < 100)
-      {
-        this.weapon += amount;
-      }
-    },
-
     fire: function()
     {
-      // Prevent excessive ROF
-      if (this.weaponCooldown.delta() < 0)
-      {
-        // trace("Weapon has not reloaded", this.weaponCooldown.delta());
-      }
-      else if (this.weapon < weaponEnergyUse)
-      {
-        // trace("Not enough energy to fire weapon", this.weapon, weaponEnergyUse);
-      }
-      else
-      {
-        // reset weapon cooldown
-        this.weaponCooldown.set(0.30);
-        // consume weapon energy
-        this.weapon -= weaponEnergyUse;
-
-        // initialize the bullet vector
-        var bulletVector = new SAT.Vector();
-        bulletVector.copy(this.previousDirectionalVector);
-
-        // initialize the bullets settings
-        var bulletSettings = {
-          origin: this,
-          directionalVector: bulletVector,
-          frameStart: this.playerId
-        };
-
-        // initialize the bullets position
-        var bulletPosition = {
-          x: this.pos.x+(this.size.x/2),
-          y: this.pos.y+(this.size.y/2)
-        };
-
-        // Spawn the bullet entity
-        ig.game.spawnEntity(Bullet, bulletPosition.x, bulletPosition.y, bulletSettings);
-      }
+      this.turret.fire(this);
     },
 
-    resetStats: function()
+    // Remove the affects of power-ups
+    resetAttributes: function()
     {
+      this.maxVel.x  = this.attributes.velocity;
+      this.maxVel.y  = this.attributes.velocity;
+      this.sheild    = 0;
+      this.invisible = 0;
 
+      this.weaponAttributes = ig.copy(this.weaponAttributes);
     },
 
     receiveDamage: function(damage)
@@ -178,6 +228,8 @@ defines(function() {
     {
       this.parent();
 
+      this.turret.recharge(ig.system.tick);
+
       if (this.controlMap)
       {
         this.handleLocalControls();
@@ -188,8 +240,8 @@ defines(function() {
       }
 
       // Set the entity velocity based on the current directionalVector
-      this.vel.x = this.directionalVector.x * tankMaximumVelocity;
-      this.vel.y = this.directionalVector.y * tankMaximumVelocity;
+      this.vel.x = this.directionalVector.x * this.attributes.velocity;
+      this.vel.y = this.directionalVector.y * this.attributes.velocity;
 
       this.setAnimFromDirection();
 
