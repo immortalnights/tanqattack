@@ -1,0 +1,72 @@
+<html>
+	<head>
+		<script src="/socket.io/socket.io.js"></script>
+	</head>
+	<body style="background: lightgray;">
+		<div style="width: 810px;height: 610px;padding: 5px;margin: 80px auto 0; background: white; border: 1px solid black;">
+			<canvas width="800" height="600" style="width: 800px; height: 600px;outline:none;"></canvas>
+		</div>
+
+		<script>
+			var socket = io();
+
+			var entities = [];
+
+			var canvas = document.getElementsByTagName('canvas')[0];
+			let ctx = canvas.getContext('2d');
+
+			const render = () => {
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				entities.forEach((p, i) => {
+					ctx.beginPath();
+					ctx.arc(p.location.x, p.location.y, 10, 0, 2 * Math.PI);
+					ctx.closePath();
+					ctx.stroke();
+				});
+
+				window.requestAnimationFrame(render);
+			};
+
+			window.requestAnimationFrame(render);
+
+			// enable keyboard events
+			canvas.setAttribute('tabindex', 0);
+
+			canvas.addEventListener('keydown', (event) => {
+				console.log("keydown", event);
+			});
+			canvas.addEventListener('keyup', (event) => {
+				console.log("keyup", event);
+				// socket.emit('input', {
+					
+				// })
+			});
+
+			socket.on('spawn', (msg) => {
+				entities.push(msg);
+				console.log("Player spawned", msg);
+			});
+
+			socket.on('players', (msg) => {
+				msg.forEach((p, i) => {
+					console.log("Loading player", p);
+					entities.push(p);
+				});
+			});
+
+			socket.on('destroy', (msg) => {
+				let index = entities.findIndex((e) => {
+					return e.id === msg.id;
+				});
+
+				console.log("Player destroyed", entities[index]);
+
+				if (-1 !== index)
+				{
+					entities.splice(index, 1);
+				}
+			});
+		</script>
+	</body>
+</html>
