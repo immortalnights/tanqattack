@@ -3,7 +3,7 @@
 		<script src="/socket.io/socket.io.js"></script>
 	</head>
 	<body style="background: lightgray;">
-		<div style="width: 810px;height: 610px;padding: 5px;margin: 80px auto 0; background: white; border: 1px solid black;">
+		<div style="width: 810px;height: 610px;padding: 5px;margin: 20px auto 0; background: white; border: 1px solid black;">
 			<canvas width="800" height="600" style="width: 800px; height: 600px;outline:none;"></canvas>
 		</div>
 
@@ -11,6 +11,7 @@
 			var socket = io();
 
 			var entities = [];
+			var blocks = [];
 
 			var canvas = document.getElementsByTagName('canvas')[0];
 			let ctx = canvas.getContext('2d');
@@ -25,6 +26,13 @@
 					ctx.stroke();
 				});
 
+				blocks.forEach((b, i) => {
+					ctx.beginPath();
+					ctx.rect(b.x, b.y, b.w, b.h);
+					ctx.closePath();
+					ctx.stroke();
+				});
+
 				window.requestAnimationFrame(render);
 			};
 
@@ -33,14 +41,103 @@
 			// enable keyboard events
 			canvas.setAttribute('tabindex', 0);
 
+			// ignore repeated key events
+			var direction = { x: 0, y: 0 };
 			canvas.addEventListener('keydown', (event) => {
-				console.log("keydown", event);
+				// console.log("keydown", event);
+				var change = false;
+				switch (event.key)
+				{
+					case 'ArrowUp':
+					{
+						if (direction.y !== -1)
+						{
+							direction.y = -1;
+							change = true;
+						}
+						break;
+					}
+					case 'ArrowDown':
+					{
+						if (direction.y !== 1)
+						{
+							direction.y = 1;
+							change = true;
+						}
+						break;
+					}
+					case 'ArrowLeft':
+					{
+						if (direction.x !== -1)
+						{
+							direction.x = -1;
+							change = true;
+						}
+						break;
+					}
+					case 'ArrowRight':
+					{
+						if (direction.x !== 1)
+						{
+							direction.x = 1;
+							change = true;
+						}
+						break;
+					}
+				}
+
+				if (change)
+				{
+					socket.emit('move', direction);
+				}
 			});
 			canvas.addEventListener('keyup', (event) => {
-				console.log("keyup", event);
-				// socket.emit('input', {
-					
-				// })
+				// console.log("keyup", event);
+				var change = false;
+				switch (event.key)
+				{
+					case 'ArrowUp':/*
+					{
+						if (direction.y !== 0)
+						{
+							direction.y = 0;
+							change = true;
+						}
+						break;
+					}*/
+					case 'ArrowDown':
+					{
+						if (direction.y !== 0)
+						{
+							direction.y = 0;
+							change = true;
+						}
+						break;
+					}
+					case 'ArrowLeft':/*
+					{
+						if (direction.x !== -1)
+						{
+							direction.x = -1;
+							change = true;
+						}
+						break;
+					}*/
+					case 'ArrowRight':
+					{
+						if (direction.x !== 0)
+						{
+							direction.x = 0;
+							change = true;
+						}
+						break;
+					}
+				}
+
+				if (change)
+				{
+					socket.emit('move', direction);
+				}
 			});
 
 			socket.on('spawn', (msg) => {
@@ -48,11 +145,15 @@
 				console.log("Player spawned", msg);
 			});
 
+			socket.on('arena', (msg) => {
+				console.log("Loading arena");
+				entities = msg.players;
+				blocks = msg.arena.blocks;
+			});
+
 			socket.on('players', (msg) => {
-				msg.forEach((p, i) => {
-					console.log("Loading player", p);
-					entities.push(p);
-				});
+				console.log("Updating players");
+				entities = msg;
 			});
 
 			socket.on('destroy', (msg) => {
