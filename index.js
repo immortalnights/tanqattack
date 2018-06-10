@@ -3,16 +3,21 @@ const app = express()
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const SAT = require('sat');
-// const Math = require('math');
+const maps = [require('./data/maps/1.json')];
+const tileCollisionPolygons = require('./data/tilecollisionmap.json');
 
-app.get('/', function(req, res){
-	res.sendFile(__dirname + '/public/index.html');
-});
+app.use(express.static('public'));
 
 var arena = {
-	w: 800,
-	h: 600,
-	blocks: []
+	w: 640,
+	h: 480,
+	blocks: [],
+	map: {
+		tileSize: 32,
+		rows: 15,
+		cols: 20,
+		data: maps[0]
+	}
 };
 
 var playerCount = 0;
@@ -28,23 +33,59 @@ const randomInt = function(min, max) {
 	return Math.floor(Math.random() * Math.floor(max)) + min;
 }
 
-// make some obstacles
-for (var i = 0; i < 11; i++)
+for (var r = 0; r < arena.map.data.length; r++)
 {
-	arena.blocks.push({
-		x: randomInt(50, arena.w - 50),
-		y: randomInt(50, arena.h - 50),
-		w: randomInt(10, 50),
-		h: randomInt(10, 50),
-	});
+	for (var c = 0; c < arena.map.data[r].length; c++)
+	{
+		let tile = arena.map.data[r][c];
+		if (tile > 0 && tile !== 5)
+		{
+			// console.log("blocking tile at", c, r);
+			let collisionMap = tileCollisionPolygons[tile];
+			if (collisionMap)
+			{
+				let location = new SAT.Vector(c * arena.map.tileSize, r * arena.map.tileSize);
+				let vectors = collisionMap.map(function(arr) {
+					return new SAT.Vector(arr[0], arr[1]);
+				});
+
+				arena.blocks.push(new SAT.Polygon(location, vectors));
+			}
+		}
+	}
 }
+// console.log(arena.blocks[0])
+
+const findPlayerStartLocations = function(map) {
+	var startLocations = {};
+	for (var r = 0; r < map.rows; r++)
+	{
+		for (var c = 0; c < map.cols; c++)
+		{
+			var tile = map.data[r][c];
+
+			if (tile < 0)
+			{
+				startLocations[Math.abs(tile)] = { x: c * map.tileSize, y: r * map.tileSize };
+			}
+		}
+	}
+
+	return startLocations;
+}
+
+const startLocations = findPlayerStartLocations(arena.map);
+// console.log(startLocations);
 
 io.on('connection', function(socket) {
 	console.log("A user has connected");
 
+	let id = playerCount++;
+	console.log(id % 4);
 	var player = {
-		id: ++playerCount,
-		location: { x: randomInt(25, 750), y: randomInt(25, 550) },
+		id: id,
+		location: { x: startLocations[(id % 4) + 1].x, y: startLocations[(id % 4) + 1].y },
+		lastDirection: { x: 0, y: 0 },
 		direction: { x: 0, y: 0 },
 		speed: 100
 	};
@@ -77,6 +118,7 @@ io.on('connection', function(socket) {
 	socket.on('move', (msg) => {
 		// console.log("Player %i moving", player.id, msg);
 		// TODO check input
+		player.lastDirection = player.direction;
 		player.direction = msg;
 	});
 });
@@ -121,12 +163,13 @@ const update = function(delta) {
 			});
 		});
 		arena.blocks.forEach((b, i) => {
-			let box = new SAT.Box(new SAT.Vector(b.x, b.y), b.w, b.h);
-			actors.push({
-				poly: box.toPolygon(),
-				player: false,
-				parent: box
-			});
+			actors.push(b);
+			// let box = new SAT.Box(new SAT.Vector(b.x, b.y), b.w, b.h);
+			// actors.push({
+			// 	poly: box.toPolygon(),
+			// 	player: false,
+			// 	parent: box
+			// });
 		});
 
 		// Check each player with each other player and each block
@@ -241,7 +284,7 @@ const update = function(delta) {
 								// otherActor.parent.location.y = otherActor.parent.location.y - (response.overlapV.y / 2);
 							}
 						}
-						else if (SAT.testCirclePolygon(actor.poly, otherActor.poly, response))
+						else if (SAT.testCirclePolygon(actor.poly, otherActor, response))
 						{
 							// push the player back
 							actor.parent.location.x = actor.parent.location.x - response.overlapV.x;
@@ -278,8 +321,9 @@ setInterval(() => {
 			players.forEach((p, i) => {
 				console.log("Player %i; x: %i y: %i (%i, %i)", i, p.location.x, p.location.y, p.direction.x, p.direction.y);
 			});
-			updateTimer = 5000;
 		}
+
+		updateTimer = 5000;
 	}
 }, 16.6);
 
