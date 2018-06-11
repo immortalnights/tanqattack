@@ -38,23 +38,28 @@ for (var r = 0; r < arena.map.data.length; r++)
 	for (var c = 0; c < arena.map.data[r].length; c++)
 	{
 		let tile = arena.map.data[r][c];
-		if (tile > 0 && tile !== 5)
+		if (tile > 0)
 		{
 			// console.log("blocking tile at", c, r);
 			let collisionMap = tileCollisionPolygons[tile];
 			if (collisionMap)
 			{
-				let location = new SAT.Vector(c * arena.map.tileSize, r * arena.map.tileSize);
-				let vectors = collisionMap.map(function(arr) {
+				let first = collisionMap[0];
+				let rest = collisionMap.slice(1);
+
+				let location = new SAT.Vector((c * arena.map.tileSize) + first[0], (r * arena.map.tileSize) + first[1]);
+				let vectors = rest.map(function(arr) {
 					return new SAT.Vector(arr[0], arr[1]);
 				});
 
-				arena.blocks.push(new SAT.Polygon(location, vectors));
+				let poly = new SAT.Polygon(location, vectors);
+				poly._tile = tile;
+				arena.blocks.push(poly);
 			}
 		}
 	}
-}
-// console.log(arena.blocks[0])
+}c
+// console.log(arena.blocks[1])
 
 const findPlayerStartLocations = function(map) {
 	var startLocations = {};

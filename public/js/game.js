@@ -180,8 +180,11 @@ Game.prototype.render = function() {
 	ctx.save();
 	ctx.strokeStyle = '#ff00ff';
 	this.arena.blocks.forEach((b, i) => {
+		// var start = b.points.shift();
+
 		// console.log(b);
 		ctx.beginPath();
+		ctx.lineWidth = 1;
 		ctx.moveTo(b.pos.x, b.pos.y);
 		b.points.forEach((p) => {
 			ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
