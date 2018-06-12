@@ -7,6 +7,7 @@ const Game = function(canvas) {
 
 Game.prototype.start = function() {
 	this.players = [];
+	this.bullets = [];
 	this._lastTick = 0;
 	this._debugTimer = 0;
 
@@ -36,6 +37,11 @@ Game.prototype.start = function() {
 			// console.log("Updated players");
 		});
 
+		this.socket.on('bullets', (msg) => {
+			this.bullets = msg;
+			// console.log("Updated players");
+		});
+
 		this.socket.on('destroy', (msg) => {
 			let index = this.players.findIndex((e) => {
 				return e.id === msg.id;
@@ -53,7 +59,10 @@ Game.prototype.start = function() {
 }
 
 Game.prototype.load = function() {
-	return [window.loader.load('tilemap', '/gfx/tileset.png'), window.loader.load('tanqs', '/gfx/tanqs.png')];
+	return [window.loader.load('tilemap', '/gfx/tileset.png'),
+	  window.loader.load('tanqs', '/gfx/tanqs.png'),
+	  window.loader.load('bullets', '/gfx/bullets.png'),
+	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png')];
 }
 
 Game.prototype.tick = function() {
@@ -151,11 +160,19 @@ Game.prototype.render = function() {
 		return spriteOffset;
 	}
 
+	ctx.save();
+
+	var drawBoundingBoxes = false;
+	if (drawBoundingBoxes)
+	{
+		ctx.strokeStyle = '#ff00ff';
+	}
+
 	this.players.forEach((p, i) => {
-		var tanqs = window.loader.get('tanqs');
+		let tanqs = window.loader.get('tanqs');
 
 		// identify image based on direction
-		var spriteOffset;
+		let spriteOffset;
 		if (p.direction.x === 0 && p.direction.y === 0)
 		{
 			spriteOffset = spriteFromDirection(p.lastDirection);
@@ -170,27 +187,58 @@ Game.prototype.render = function() {
 		              0, // source y
 		              32, // source width
 		              36, // source height
-		              p.location.x, // target x
-		              p.location.y, // target y
+		              p.location.x - 16, // target x
+		              p.location.y - 16, // target y
 		              32, // target width
 		              36); // target height
+
+		if (drawBoundingBoxes)
+		{
+			ctx.beginPath();
+			ctx.arc(p.location.x, p.location.y, 16, 0, 2 * Math.PI);
+			ctx.closePath();
+			ctx.stroke();
+		}
 	});
 
-	// collision map
-	ctx.save();
-	ctx.strokeStyle = '#ff00ff';
-	this.arena.blocks.forEach((b, i) => {
-		// var start = b.points.shift();
+	let bullets = window.loader.get('bullets');
+	this.bullets.forEach((b, i) => {
+		ctx.drawImage(bullets, // image
+		              12 * b.image, // source x
+		              0, // source y
+		              12, // source width
+		              16, // source height
+		              b.location.x - 6, // target x
+		              b.location.y - 6, // target y
+		              12, // target width
+		              16); // target height
 
-		// console.log(b);
-		ctx.beginPath();
-		ctx.lineWidth = 1;
-		ctx.moveTo(b.pos.x, b.pos.y);
-		b.points.forEach((p) => {
-			ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
+		if (drawBoundingBoxes)
+		{
+			ctx.beginPath();
+			ctx.arc(b.location.x, b.location.y, 6, 0, 2 * Math.PI);
+			ctx.closePath();
+			ctx.stroke();
+		}
+	});
+
+	if (drawBoundingBoxes)
+	{
+		// collision map
+		this.arena.blocks.forEach((b, i) => {
+			// var start = b.points.shift();
+
+			// console.log(b);
+			ctx.beginPath();
+			ctx.lineWidth = 1;
+			ctx.moveTo(b.pos.x, b.pos.y);
+			b.points.forEach((p) => {
+				ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
+			});
+			ctx.closePath();
+			ctx.stroke();
 		});
-		ctx.closePath();
-		ctx.stroke();
-	});
+	}
+
 	ctx.restore();
 }

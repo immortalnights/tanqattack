@@ -76,6 +76,11 @@ Keyboard.prototype.init = function(socket) {
 				}
 				break;
 			}
+			case ' ':
+			{
+				socket.emit('fire');
+				break;
+			}
 		}
 
 		if (change)

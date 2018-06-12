@@ -8,6 +8,18 @@ const tileCollisionPolygons = require('./data/tilecollisionmap.json');
 
 app.use(express.static('public'));
 
+class Bullet
+{
+	constructor(location, direction, index)
+	{
+		this.location = location;
+		this.direction = direction;
+		this.life = 100;
+		this.speed = 150;
+		this.image = index;
+	}
+}
+
 var arena = {
 	w: 640,
 	h: 480,
@@ -22,6 +34,7 @@ var arena = {
 
 var playerCount = 0;
 var players = [];
+var bullets = [];
 
 const randomInt = function(min, max) {
 	if (max === undefined)
@@ -44,13 +57,15 @@ for (var r = 0; r < arena.map.data.length; r++)
 			let collisionMap = tileCollisionPolygons[tile];
 			if (collisionMap)
 			{
-				let first = collisionMap[0];
-				let rest = collisionMap.slice(1);
+				let first = collisionMap.offset;
+				let rest = collisionMap.points;
 
 				let location = new SAT.Vector((c * arena.map.tileSize) + first[0], (r * arena.map.tileSize) + first[1]);
 				let vectors = rest.map(function(arr) {
 					return new SAT.Vector(arr[0], arr[1]);
 				});
+
+				vectors.unshift(new SAT.Vector(0, 0));
 
 				let poly = new SAT.Polygon(location, vectors);
 				poly._tile = tile;
@@ -90,7 +105,7 @@ io.on('connection', function(socket) {
 	var player = {
 		id: id,
 		location: { x: startLocations[(id % 4) + 1].x, y: startLocations[(id % 4) + 1].y },
-		lastDirection: { x: 0, y: 0 },
+		lastDirection: { x: 0, y: -1 },
 		direction: { x: 0, y: 0 },
 		speed: 100
 	};
@@ -117,7 +132,10 @@ io.on('connection', function(socket) {
 			console.log("Player %i destroyed", player.id);
 
 			players.splice(index, 1);
+
 		}
+
+		// socket.removeAllListeners();
 	});
 
 	socket.on('move', (msg) => {
@@ -126,55 +144,73 @@ io.on('connection', function(socket) {
 		player.lastDirection = player.direction;
 		player.direction = msg;
 	});
+
+	socket.on('fire', (msg) => {
+		let direction = {};
+		direction.x = player.direction.x || player.lastDirection.x;
+		direction.y = player.direction.y || player.lastDirection.y;
+
+		let bullet = new Bullet(Object.assign({}, player.location), direction, (player.id % 4));
+		bullets.push(bullet);
+	});
 });
 
 const update = function(delta) {
 	if (players.length !== 0)
 	{
+		let move = function(o) {
+			if (o.direction.x !== 0)
+			{
+				o.location.x += (o.direction.x * ((o.speed / 1000) * delta));
+				if (o.location.x < 0)
+				{
+					o.location.x = 0;
+				}
+				else if (o.location.x > arena.w)
+				{
+					o.location.x = arena.w
+				}
+			}
+			if (o.direction.y !== 0)
+			{
+				o.location.y += (o.direction.y * ((o.speed / 1000) * delta));
+				if (o.location.y < 0)
+				{
+					o.location.y = 0;
+				}
+				else if (o.location.y > arena.h)
+				{
+					o.location.y = arena.h
+				}
+			}
+		};
+
 		players.forEach((p, i) => {
-			if (p.direction.x !== 0)
-			{
-				p.location.x += (p.direction.x * ((p.speed / 1000) * delta));
-				if (p.location.x < 0)
-				{
-					p.location.x = 0;
-				}
-				else if (p.location.x > arena.w)
-				{
-					p.location.x = arena.w
-				}
-			}
-			if (p.direction.y !== 0)
-			{
-				p.location.y += (p.direction.y * ((p.speed / 1000) * delta));
-				if (p.location.y < 0)
-				{
-					p.location.y = 0;
-				}
-				else if (p.location.y > arena.h)
-				{
-					p.location.y = arena.h
-				}
-			}
+			move(p);
+		});
+
+		bullets.forEach((b) => {
+			move(b);
 		});
 
 		// TODO don't recreate all the SAT objects each update...
 		let actors = [];
 		players.forEach((p, i) => {
 			actors.push({
-				poly: new SAT.Circle(new SAT.Vector(p.location.x, p.location.y), 10),
+				poly: new SAT.Circle(new SAT.Vector(p.location.x, p.location.y), 16),
 				player: true,
 				parent: p
 			});
 		});
+		bullets.forEach((b) => {
+			actors.push({
+				poly: new SAT.Circle(new SAT.V(b.location.x, b.location.y), 6),
+				player: false,
+				parent: b
+			});
+		})
 		arena.blocks.forEach((b, i) => {
 			actors.push(b);
-			// let box = new SAT.Box(new SAT.Vector(b.x, b.y), b.w, b.h);
-			// actors.push({
-			// 	poly: box.toPolygon(),
-			// 	player: false,
-			// 	parent: box
-			// });
 		});
 
 		// Check each player with each other player and each block
@@ -185,6 +221,7 @@ const update = function(delta) {
 				actors.forEach((otherActor, otherIndex) => {
 					if (actor !== otherActor)
 					{
+						// console.log("***", actor.poly, otherActor.poly);
 						let response = new SAT.Response();
 						if (otherActor.player)
 						{
@@ -289,8 +326,16 @@ const update = function(delta) {
 								// otherActor.parent.location.y = otherActor.parent.location.y - (response.overlapV.y / 2);
 							}
 						}
+						else if (otherActor.parent instanceof Bullet)
+						{
+							if (SAT.testCircleCircle(actor.poly, otherActor.poly, response))
+							{
+								console.log("Hit", actor.poly, otherActor.poly, response);
+							}
+						}
 						else if (SAT.testCirclePolygon(actor.poly, otherActor, response))
 						{
+							// console.log("Block", actor.poly, otherActor, response);
 							// push the player back
 							actor.parent.location.x = actor.parent.location.x - response.overlapV.x;
 							actor.parent.location.y = actor.parent.location.y - response.overlapV.y;
@@ -301,6 +346,7 @@ const update = function(delta) {
 		});
 
 		io.emit('players', players);
+		io.emit('bullets', bullets);
 	}
 }
 
