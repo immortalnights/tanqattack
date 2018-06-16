@@ -1,103 +1,46 @@
+'use struct';
+
 const express = require('express')
 const app = express()
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const SAT = require('sat');
-const maps = [require('./data/maps/1.json')];
-const tileCollisionPolygons = require('./data/tilecollisionmap.json');
+const utilities = require('./lib/utilities');
+const Game = require('./lib/game');
+const Actor = require('./lib/actor');
+const Pawn = require('./lib/pawn');
 
 app.use(express.static('public'));
 
-class Bullet
-{
-	constructor(location, direction, index)
-	{
-		this.location = location;
-		this.direction = direction;
-		this.life = 100;
-		this.speed = 150;
-		this.image = index;
-	}
-}
+// class Bullet
+// {
+// 	constructor(location, direction, index)
+// 	{
+// 		this.location = location;
+// 		this.direction = direction;
+// 		this.life = 100;
+// 		this.speed = 150;
+// 		this.image = index;
+// 	}
+// }
 
-var arena = {
-	w: 640,
-	h: 480,
-	blocks: [],
-	map: {
-		tileSize: 32,
-		rows: 15,
-		cols: 20,
-		data: maps[0]
-	}
-};
+// var arena = {
+// 	w: 640,
+// 	h: 480,
+// 	blocks: [],
+// 	map: {
+// 		tileSize: 32,
+// 		rows: 15,
+// 		cols: 20,
+// 		data: maps[0]
+// 	}
+// };
 
-var playerCount = 0;
-var players = [];
-var bullets = [];
+// var playerCount = 0;
+// var players = [];
+// var bullets = [];
 
-const randomInt = function(min, max) {
-	if (max === undefined)
-	{
-		max = min;
-		min = 0;
-	}
-
-	return Math.floor(Math.random() * Math.floor(max)) + min;
-}
-
-for (var r = 0; r < arena.map.data.length; r++)
-{
-	for (var c = 0; c < arena.map.data[r].length; c++)
-	{
-		let tile = arena.map.data[r][c];
-		if (tile > 0)
-		{
-			// console.log("blocking tile at", c, r);
-			let collisionMap = tileCollisionPolygons[tile];
-			if (collisionMap)
-			{
-				let first = collisionMap.offset;
-				let rest = collisionMap.points;
-
-				let location = new SAT.Vector((c * arena.map.tileSize) + first[0], (r * arena.map.tileSize) + first[1]);
-				let vectors = rest.map(function(arr) {
-					return new SAT.Vector(arr[0], arr[1]);
-				});
-
-				vectors.unshift(new SAT.Vector(0, 0));
-
-				let poly = new SAT.Polygon(location, vectors);
-				poly._tile = tile;
-				arena.blocks.push(poly);
-			}
-		}
-	}
-}c
-// console.log(arena.blocks[1])
-
-const findPlayerStartLocations = function(map) {
-	var startLocations = {};
-	for (var r = 0; r < map.rows; r++)
-	{
-		for (var c = 0; c < map.cols; c++)
-		{
-			var tile = map.data[r][c];
-
-			if (tile < 0)
-			{
-				startLocations[Math.abs(tile)] = { x: c * map.tileSize, y: r * map.tileSize };
-			}
-		}
-	}
-
-	return startLocations;
-}
-
-const startLocations = findPlayerStartLocations(arena.map);
-// console.log(startLocations);
-
-io.on('connection', function(socket) {
+io.on('Xconnection', function(socket) {
 	console.log("A user has connected");
 
 	let id = playerCount++;
@@ -350,36 +293,18 @@ const update = function(delta) {
 	}
 }
 
-// game loop
-let lastTime = Date.now();
-let updateTimer = 5000;
-setInterval(() => {
-	const now = Date.now();
-	let delta = now - lastTime;
-	lastTime = now;
-	update(delta);
-
-	updateTimer = updateTimer - delta;
-	if (updateTimer < 0)
-	{
-		if (players.length === 0)
-		{
-			console.log("No players...")
-		}
-		else
-		{
-			console.log("*** %i Players", players.length);
-			players.forEach((p, i) => {
-				console.log("Player %i; x: %i y: %i (%i, %i)", i, p.location.x, p.location.y, p.direction.x, p.direction.y);
-			});
-		}
-
-		updateTimer = 5000;
-	}
-}, 16.6);
-
 
 // app.listen(8080, () => console.log('Example app listening on port 8080!'))
 http.listen(8080, function() {
 	console.log("Listening on port 8080");
+
+	let singleton = utilities.instanceSingleton('tanq.game', Game, io);
+	const game = singleton.instance;
+
+	io.on('connection', (socket) => {
+		console.log("Connection established");
+		game.connected(socket);
+	});
+
+	game.run();
 });

@@ -8,14 +8,26 @@ const Game = function(canvas) {
 Game.prototype.start = function() {
 	this.players = [];
 	this.bullets = [];
+	this.objs = [];
 	this._lastTick = 0;
 	this._debugTimer = 0;
 
-	var deferred = this.load()
+	var deferred = this.load();
 
 	Promise.all(deferred).then(() => {
 		this.socket = io();
 		window.keyboard.init(this.socket);
+
+		this.socket.on('queued', (msg) => {
+			console.log("Queued", msg);
+		});
+
+		this.socket.on('joined', (msg) => {
+			console.log("Joined game", msg);
+
+			// start the game tick
+			this.tick();
+		});
 
 		this.socket.on('spawn', (msg) => {
 			this.players.push(msg);
@@ -23,13 +35,9 @@ Game.prototype.start = function() {
 		});
 
 		this.socket.on('arena', (msg) => {
-			this.arena = msg.arena;
+			console.log("Loading arena", msg);
+			this.level = msg.level;
 			this.players = msg.players;
-
-			// start the game tick
-			this.tick();
-
-			console.log("Loaded arena", this.arena);
 		});
 
 		this.socket.on('players', (msg) => {
@@ -40,6 +48,11 @@ Game.prototype.start = function() {
 		this.socket.on('bullets', (msg) => {
 			this.bullets = msg;
 			// console.log("Updated players");
+		});
+
+		this.socket.on('update', (msg) => {
+			// update objects
+			this.objs = msg.objects
 		});
 
 		this.socket.on('destroy', (msg) => {
@@ -82,28 +95,29 @@ Game.prototype.update = function(delta) {
 }
 
 Game.prototype.render = function() {
-	var ctx = this.ctx;
+	let ctx = this.ctx;
 
-	var map = this.arena.map;
-	for (var r = 0; r < map.rows; r++)
+	let map = this.level.map;
+	let tileSize = this.level.tileSize;
+	for (let r = 0; r < map.rows; r++)
 	{
-		for (var c = 0; c < map.cols; c++)
+		for (let c = 0; c < map.columns; c++)
 		{
-			var tile = map.data[r][c];
+			let tile = map.data[r][c];
 
 			// 0 => empty tile
 			if (tile !== 0)
 			{
-				var tileMap = window.loader.get('tilemap');
+				let tileMap = window.loader.get('tilemap');
 				this.ctx.drawImage(tileMap, // image
-				                   (tile - 1) * map.tileSize, // source x
+				                   (tile - 1) * tileSize, // source x
 				                   0, // source y
-				                   map.tileSize, // source width
-				                   map.tileSize, // source height
-				                   c * map.tileSize, // target x
-				                   r * map.tileSize, // target y
-				                   map.tileSize, // target width
-				                   map.tileSize); // target height
+				                   tileSize, // source width
+				                   tileSize, // source height
+				                   c * tileSize, // target x
+				                   r * tileSize, // target y
+				                   tileSize, // target width
+				                   tileSize); // target height
 			}
 		}
 	}
@@ -160,56 +174,49 @@ Game.prototype.render = function() {
 		return spriteOffset;
 	}
 
-	ctx.save();
 
-	var drawBoundingBoxes = false;
-	if (drawBoundingBoxes)
-	{
-		ctx.strokeStyle = '#ff00ff';
-	}
-
-	this.players.forEach((p, i) => {
-		let tanqs = window.loader.get('tanqs');
+	const renderTanq = (tanq) => {
+		let image = window.loader.get('tanqs');
 
 		// identify image based on direction
 		let spriteOffset;
-		if (p.direction.x === 0 && p.direction.y === 0)
+		if (tanq.direction.x === 0 && tanq.direction.y === 0)
 		{
-			spriteOffset = spriteFromDirection(p.lastDirection);
+			spriteOffset = spriteFromDirection(tanq.lastDirection);
 		}
 		else
 		{
-			spriteOffset = spriteFromDirection(p.direction);
+			spriteOffset = spriteFromDirection(tanq.direction);
 		}
 
-		ctx.drawImage(tanqs, // image
-		              (8 * 32) * (p.id % 4) + (spriteOffset * 32), // source x
+		ctx.drawImage(image, // image
+		              (8 * 32) * tanq.index + (spriteOffset * 32), // source x
 		              0, // source y
 		              32, // source width
 		              36, // source height
-		              p.location.x - 16, // target x
-		              p.location.y - 16, // target y
+		              tanq.location.x - 16, // target x
+		              tanq.location.y - 16, // target y
 		              32, // target width
 		              36); // target height
 
 		if (drawBoundingBoxes)
 		{
 			ctx.beginPath();
-			ctx.arc(p.location.x, p.location.y, 16, 0, 2 * Math.PI);
+			ctx.arc(tanq.location.x, tanq.location.y, 16, 0, 2 * Math.PI);
 			ctx.closePath();
 			ctx.stroke();
 		}
-	});
+	};
 
-	let bullets = window.loader.get('bullets');
-	this.bullets.forEach((b, i) => {
-		ctx.drawImage(bullets, // image
-		              12 * b.image, // source x
+	const renderBullet = (bullet) => {
+		let image = window.loader.get('bullets');
+		ctx.drawImage(image, // image
+		              12 * bullet.index, // source x
 		              0, // source y
 		              12, // source width
 		              16, // source height
-		              b.location.x - 6, // target x
-		              b.location.y - 6, // target y
+		              bullet.location.x - 6, // target x
+		              bullet.location.y - 6, // target y
 		              12, // target width
 		              16); // target height
 
@@ -220,6 +227,32 @@ Game.prototype.render = function() {
 			ctx.closePath();
 			ctx.stroke();
 		}
+	}
+
+	ctx.save();
+
+	var drawBoundingBoxes = false;
+	if (drawBoundingBoxes)
+	{
+		ctx.strokeStyle = '#ff00ff';
+	}
+
+	this.objs.forEach((o, i) => {
+
+		switch (o.type)
+		{
+			case 'tanq':
+			{
+				renderTanq(o);
+				break
+			}
+			case 'bullet':
+			{
+				renderBullet(o);
+				break;
+			}
+		}
+		
 	});
 
 	if (drawBoundingBoxes)
