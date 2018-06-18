@@ -97,6 +97,8 @@ Game.prototype.update = function(delta) {
 Game.prototype.render = function() {
 	let ctx = this.ctx;
 
+	var drawBoundingBoxes = true;
+
 	let map = this.level.map;
 	let tileSize = this.level.tileSize;
 	for (let r = 0; r < map.rows; r++)
@@ -174,21 +176,11 @@ Game.prototype.render = function() {
 		return spriteOffset;
 	}
 
-
 	const renderTanq = (tanq) => {
 		let image = window.loader.get('tanqs');
 
 		// identify image based on direction
-		let spriteOffset;
-		if (tanq.direction.x === 0 && tanq.direction.y === 0)
-		{
-			spriteOffset = spriteFromDirection(tanq.lastDirection);
-		}
-		else
-		{
-			spriteOffset = spriteFromDirection(tanq.direction);
-		}
-
+		let spriteOffset = spriteFromDirection(tanq.direction);
 		ctx.drawImage(image, // image
 		              (8 * 32) * tanq.index + (spriteOffset * 32), // source x
 		              0, // source y
@@ -231,7 +223,6 @@ Game.prototype.render = function() {
 
 	ctx.save();
 
-	var drawBoundingBoxes = false;
 	if (drawBoundingBoxes)
 	{
 		ctx.strokeStyle = '#ff00ff';
@@ -258,18 +249,22 @@ Game.prototype.render = function() {
 	if (drawBoundingBoxes)
 	{
 		// collision map
-		this.arena.blocks.forEach((b, i) => {
+		this.level.blocks.forEach((b, i) => {
 			// var start = b.points.shift();
 
-			// console.log(b);
-			ctx.beginPath();
-			ctx.lineWidth = 1;
-			ctx.moveTo(b.pos.x, b.pos.y);
-			b.points.forEach((p) => {
-				ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
-			});
-			ctx.closePath();
-			ctx.stroke();
+			if (b)
+			{
+				// console.log(b);
+				ctx.beginPath();
+				ctx.lineWidth = 1;
+				ctx.moveTo(b.pos.x, b.pos.y);
+				b.points.forEach((p) => {
+					ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
+				});
+				ctx.closePath();
+				ctx.stroke();
+			}
+
 		});
 	}
 
