@@ -215,7 +215,7 @@ Game.prototype.render = function() {
 		if (drawBoundingBoxes)
 		{
 			ctx.beginPath();
-			ctx.arc(b.location.x, b.location.y, 6, 0, 2 * Math.PI);
+			ctx.arc(bullet.location.x, bullet.location.y, 6, 0, 2 * Math.PI);
 			ctx.closePath();
 			ctx.stroke();
 		}
@@ -264,7 +264,6 @@ Game.prototype.render = function() {
 				ctx.closePath();
 				ctx.stroke();
 			}
-
 		});
 	}
 
