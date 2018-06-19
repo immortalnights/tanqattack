@@ -214,8 +214,12 @@ Game.prototype.render = function() {
 
 		if (drawBoundingBoxes)
 		{
+			// ctx.beginPath();
+			// ctx.arc(bullet.location.x, bullet.location.y, 6, 0, 2 * Math.PI);
+			// ctx.closePath();
+			// ctx.stroke();
 			ctx.beginPath();
-			ctx.arc(bullet.location.x, bullet.location.y, 6, 0, 2 * Math.PI);
+			ctx.rect(bullet.location.x-6, bullet.location.y-6, 12, 12);
 			ctx.closePath();
 			ctx.stroke();
 		}
