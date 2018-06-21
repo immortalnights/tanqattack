@@ -26,7 +26,8 @@ Game.prototype.start = function() {
 			console.log("Joined game", msg);
 
 			// start the game tick
-			this.tick();
+			this._lastTick = performance.now();
+			window.requestAnimationFrame(this.tick.bind(this));
 		});
 
 		this.socket.on('spawn', (msg) => {
@@ -68,7 +69,6 @@ Game.prototype.start = function() {
 			}
 		});
 	});
-
 }
 
 Game.prototype.load = function() {
@@ -78,23 +78,23 @@ Game.prototype.load = function() {
 	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png')];
 }
 
-Game.prototype.tick = function() {
-	window.requestAnimationFrame(this.tick.bind(this));
+Game.prototype.tick = function(delta) {
 
 	this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-	const now = Date.now();
-	var delta = now - this._lastTick;
-	delta = Math.min(delta, 0.25);
+	var currentTime = performance.now();
+	delta = (currentTime - this._lastTick) / 1000;
 	this.update(delta);
 	this.render();
+
+	this._lastTick = currentTime;
+	window.requestAnimationFrame(this.tick.bind(this));
 }
 
 Game.prototype.update = function(delta) {
-
 }
 
-Game.prototype.render = function() {
+Game.prototype.render = function(delta) {
 	let ctx = this.ctx;
 
 	var drawBoundingBoxes = true;
