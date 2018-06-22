@@ -9,6 +9,7 @@ Game.prototype.start = function() {
 	this.players = [];
 	this.bullets = [];
 	this.objs = [];
+	this.animations = [];
 	this._lastTick = 0;
 	this._debugTimer = 0;
 
@@ -20,6 +21,9 @@ Game.prototype.start = function() {
 
 		this.socket.on('queued', (msg) => {
 			console.log("Queued", msg);
+
+			this._lastTick = performance.now();
+			window.requestAnimationFrame(this.tick.bind(this));
 		});
 
 		this.socket.on('joined', (msg) => {
@@ -30,9 +34,17 @@ Game.prototype.start = function() {
 			window.requestAnimationFrame(this.tick.bind(this));
 		});
 
-		this.socket.on('spawn', (msg) => {
-			this.players.push(msg);
-			console.log("Player spawned", msg);
+		this.socket.on('left', (msg) => {
+			console.log("Player game", msg);
+
+			let index = this.players.findIndex((e) => {
+				return e ? e.id === msg.id : false;
+			});
+
+			if (-1 !== index)
+			{
+				this.players[index] = null;
+			}
 		});
 
 		this.socket.on('arena', (msg) => {
@@ -41,32 +53,50 @@ Game.prototype.start = function() {
 			this.players = msg.players;
 		});
 
-		this.socket.on('players', (msg) => {
-			this.players = msg;
-			// console.log("Updated players");
+		// spawn a new actor
+		this.socket.on('spawn', (actor) => {
+			console.log("Actor spawned", actor);
+
+			if (actor.type === 'explosion')
+			{
+				let anim = new Animation(window.loader.get('bulletexplosion'), 20, 18, 7);
+				anim.location = actor.location;
+				anim.location.x = actor.location.x;
+				anim.location.y = actor.location.y;
+				anim.play(0.5, false);
+				this.animations.push(anim);
+			}
+			else
+			{
+				this.objs.push(actor);
+			}
 		});
 
-		this.socket.on('bullets', (msg) => {
-			this.bullets = msg;
-			// console.log("Updated players");
+		// destroy a new actor
+		this.socket.on('destroy', (actor) => {
+			console.log("Actor destroyed", actor);
+			// this.objs.push();
 		});
 
+		// update all actors (TODO update scores)
 		this.socket.on('update', (msg) => {
 			// update objects
 			this.objs = msg.objects
 		});
 
-		this.socket.on('destroy', (msg) => {
-			let index = this.players.findIndex((e) => {
-				return e.id === msg.id;
-			});
 
-			console.log("Player destroyed", this.players[index]);
+		// update players
+		this.socket.on('players', (msg) => {
+			debugger;
+			// this.players = msg;
+			// console.log("Updated players");
+		});
 
-			if (-1 !== index)
-			{
-				this.players.splice(index, 1);
-			}
+		// update bullets
+		this.socket.on('bullets', (msg) => {
+			debugger;
+			// this.bullets = msg;
+			// console.log("Updated players");
 		});
 	});
 }
@@ -85,7 +115,7 @@ Game.prototype.tick = function(delta) {
 	var currentTime = performance.now();
 	delta = (currentTime - this._lastTick) / 1000;
 	this.update(delta);
-	this.render();
+	this.render(delta);
 
 	this._lastTick = currentTime;
 	window.requestAnimationFrame(this.tick.bind(this));
@@ -97,7 +127,7 @@ Game.prototype.update = function(delta) {
 Game.prototype.render = function(delta) {
 	let ctx = this.ctx;
 
-	var drawBoundingBoxes = true;
+	var drawBoundingBoxes = false;
 
 	let map = this.level.map;
 	let tileSize = this.level.tileSize;
@@ -182,7 +212,7 @@ Game.prototype.render = function(delta) {
 		// identify image based on direction
 		let spriteOffset = spriteFromDirection(tanq.direction);
 		ctx.drawImage(image, // image
-		              (8 * 32) * tanq.index + (spriteOffset * 32), // source x
+		              (8 * 32) * tanq.owner + (spriteOffset * 32), // source x
 		              0, // source y
 		              32, // source width
 		              36, // source height
@@ -203,7 +233,7 @@ Game.prototype.render = function(delta) {
 	const renderBullet = (bullet) => {
 		let image = window.loader.get('bullets');
 		ctx.drawImage(image, // image
-		              12 * bullet.index, // source x
+		              12 * bullet.owner, // source x
 		              0, // source y
 		              12, // source width
 		              16, // source height
@@ -247,7 +277,23 @@ Game.prototype.render = function(delta) {
 				break;
 			}
 		}
-		
+	});
+
+	let destroyed = [];
+	this.animations.forEach((a, i) => {
+		if (a.isRunning())
+		{
+			a.frame(delta);
+			a.draw(ctx, a.location.x, a.location.y);
+		}
+		else
+		{
+			destroyed.push(i);
+		}
+	});
+
+	destroyed.forEach((index) => {
+		this.animations.slice(index, 1);
 	});
 
 	if (drawBoundingBoxes)

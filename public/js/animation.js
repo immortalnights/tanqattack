@@ -12,6 +12,11 @@
 		this._running = false;
 	}
 
+	Animation.prototype.isRunning = function()
+	{
+		return this._running;
+	}
+
 	Animation.prototype.play = function(duration, repeat)
 	{
 		this._frame = 1;
