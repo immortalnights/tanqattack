@@ -12,92 +12,96 @@ Game.prototype.start = function() {
 	this.animations = [];
 	this._lastTick = 0;
 	this._debugTimer = 0;
+	this.offset = { x: 0, y: 46 }
 
 	var deferred = this.load();
 
-	Promise.all(deferred).then(() => {
-		this.socket = io();
-		window.keyboard.init(this.socket);
+	Promise.all(deferred).then(this._begin.bind(this));
+}
 
-		this.socket.on('queued', (msg) => {
-			console.log("Queued", msg);
+Game.prototype._begin = function() {
+	this.socket = io();
+	window.keyboard.init(this.socket);
 
-			this._lastTick = performance.now();
-			window.requestAnimationFrame(this.tick.bind(this));
+	this.socket.on('queued', (msg) => {
+		console.log("Queued", msg);
+
+		this._lastTick = performance.now();
+		window.requestAnimationFrame(this.tick.bind(this));
+	});
+
+	this.socket.on('joined', (msg) => {
+		console.log("Joined game", msg);
+
+		// start the game tick
+		this._lastTick = performance.now();
+		window.requestAnimationFrame(this.tick.bind(this));
+	});
+
+	this.socket.on('left', (msg) => {
+		console.log("Player game", msg);
+
+		let index = this.players.findIndex((e) => {
+			return e ? e.id === msg.id : false;
 		});
 
-		this.socket.on('joined', (msg) => {
-			console.log("Joined game", msg);
+		if (-1 !== index)
+		{
+			this.players[index] = null;
+		}
+	});
 
-			// start the game tick
-			this._lastTick = performance.now();
-			window.requestAnimationFrame(this.tick.bind(this));
-		});
+	this.socket.on('arena', (msg) => {
+		console.log("Loading arena", msg);
+		this.level = msg.level;
+		this.players = msg.players;
+	});
 
-		this.socket.on('left', (msg) => {
-			console.log("Player game", msg);
+	// spawn a new actor
+	this.socket.on('spawn', (actor) => {
+		console.log("Actor spawned", actor);
 
-			let index = this.players.findIndex((e) => {
-				return e ? e.id === msg.id : false;
-			});
+		if (actor.type === 'explosion')
+		{
+			let anim = new Animation(window.loader.get('bulletexplosion'), 20, 18, 7);
+			anim.location = actor.location;
+			anim.location.x = actor.location.x;
+			anim.location.y = actor.location.y;
+			anim.play(0.5, false);
+			this.animations.push(anim);
+		}
+		else
+		{
+			this.objs.push(actor);
+		}
+	});
 
-			if (-1 !== index)
-			{
-				this.players[index] = null;
-			}
-		});
+	// destroy a new actor
+	this.socket.on('destroy', (actor) => {
+		console.log("Actor destroyed", actor);
+		// this.objs.push();
+	});
 
-		this.socket.on('arena', (msg) => {
-			console.log("Loading arena", msg);
-			this.level = msg.level;
-			this.players = msg.players;
-		});
-
-		// spawn a new actor
-		this.socket.on('spawn', (actor) => {
-			console.log("Actor spawned", actor);
-
-			if (actor.type === 'explosion')
-			{
-				let anim = new Animation(window.loader.get('bulletexplosion'), 20, 18, 7);
-				anim.location = actor.location;
-				anim.location.x = actor.location.x;
-				anim.location.y = actor.location.y;
-				anim.play(0.5, false);
-				this.animations.push(anim);
-			}
-			else
-			{
-				this.objs.push(actor);
-			}
-		});
-
-		// destroy a new actor
-		this.socket.on('destroy', (actor) => {
-			console.log("Actor destroyed", actor);
-			// this.objs.push();
-		});
-
-		// update all actors (TODO update scores)
-		this.socket.on('update', (msg) => {
-			// update objects
-			this.objs = msg.objects
-		});
+	// update all actors (TODO update scores)
+	this.socket.on('update', (msg) => {
+		// update objects
+		this.players = msg.players;
+		this.objs = msg.objects;
+	});
 
 
-		// update players
-		this.socket.on('players', (msg) => {
-			debugger;
-			// this.players = msg;
-			// console.log("Updated players");
-		});
+	// update players
+	this.socket.on('players', (msg) => {
+		debugger;
+		// this.players = msg;
+		// console.log("Updated players");
+	});
 
-		// update bullets
-		this.socket.on('bullets', (msg) => {
-			debugger;
-			// this.bullets = msg;
-			// console.log("Updated players");
-		});
+	// update bullets
+	this.socket.on('bullets', (msg) => {
+		debugger;
+		// this.bullets = msg;
+		// console.log("Updated players");
 	});
 }
 
@@ -127,6 +131,44 @@ Game.prototype.update = function(delta) {
 Game.prototype.render = function(delta) {
 	let ctx = this.ctx;
 
+	ctx.fillStyle = '#000';
+	ctx.fillRect(0, 0, this.canvas.width, this.offset.y);
+
+	const fontSize = 22;
+	ctx.font = fontSize + 'px Lucida Console';
+	ctx.textBaseline = 'top';
+	ctx.fillStyle = '#fff';
+
+	const renderPlayerStatistics = function(player, x, y) {
+		let energy = player ? Math.floor(player.energy) : 0;
+		let gun = player ? Math.floor(player.gun) : 0;
+
+		if (energy < 10)
+		{
+			energy = '0' + energy;
+		}
+		if (gun < 10)
+		{
+			gun = '0' + gun;
+		}
+
+		ctx.fillText("ENERGY %" + energy + "  GUN %" + gun, x, y);
+	};
+
+	renderPlayerStatistics(this.players[0], 0, 0); // 1
+	renderPlayerStatistics(this.players[2], 0, 22); // 2
+
+	ctx.save();
+	ctx.textAlign = 'center';
+	ctx.fillText('0', this.canvas.width / 2, 11); // level
+	ctx.restore();
+
+	ctx.save();
+	ctx.textAlign = 'right';
+	renderPlayerStatistics(this.players[1], this.canvas.width, 0); // 3
+	renderPlayerStatistics(this.players[3], this.canvas.width, 22); // 4
+	ctx.restore();
+
 	var drawBoundingBoxes = false;
 
 	let map = this.level.map;
@@ -146,8 +188,8 @@ Game.prototype.render = function(delta) {
 				                   0, // source y
 				                   tileSize, // source width
 				                   tileSize, // source height
-				                   c * tileSize, // target x
-				                   r * tileSize, // target y
+				                   this.offset.x + c * tileSize, // target x
+				                   this.offset.y + r * tileSize, // target y
 				                   tileSize, // target width
 				                   tileSize); // target height
 			}
@@ -216,8 +258,8 @@ Game.prototype.render = function(delta) {
 		              0, // source y
 		              32, // source width
 		              36, // source height
-		              tanq.location.x - 16, // target x
-		              tanq.location.y - 16, // target y
+		              this.offset.x + tanq.location.x - 16, // target x
+		              this.offset.y + tanq.location.y - 16, // target y
 		              32, // target width
 		              36); // target height
 
@@ -237,8 +279,8 @@ Game.prototype.render = function(delta) {
 		              0, // source y
 		              12, // source width
 		              16, // source height
-		              bullet.location.x - 6, // target x
-		              bullet.location.y - 6, // target y
+		              this.offset.x + bullet.location.x - 6, // target x
+		              this.offset.y + bullet.location.y - 6, // target y
 		              12, // target width
 		              16); // target height
 
@@ -284,7 +326,7 @@ Game.prototype.render = function(delta) {
 		if (a.isRunning())
 		{
 			a.frame(delta);
-			a.draw(ctx, a.location.x, a.location.y);
+			a.draw(ctx, this.offset.x + a.location.x, this.offset.y + a.location.y);
 		}
 		else
 		{
