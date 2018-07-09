@@ -3,6 +3,13 @@
 const Game = function(canvas) {
 	this.canvas = canvas;
 	this.ctx = canvas.getContext('2d');
+
+	this.canvas.addEventListener('mousedown', function(event) {
+		var rect = this.getBoundingClientRect();
+		var x = event.clientX - rect.left;
+		var y = event.clientY - rect.top;
+		console.log("x: " + x + " y: " + y);
+	});
 }
 
 Game.prototype.start = function() {
@@ -109,7 +116,9 @@ Game.prototype.load = function() {
 	return [window.loader.load('tilemap', '/gfx/tileset.png'),
 	  window.loader.load('tanqs', '/gfx/tanqs.png'),
 	  window.loader.load('bullets', '/gfx/bullets.png'),
-	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png')];
+	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png'),
+	  window.loader.load('shield', '/gfx/shield.png'),
+	  window.loader.load('powerup', '/gfx/powerup.png')];
 }
 
 Game.prototype.tick = function(delta) {
@@ -249,26 +258,43 @@ Game.prototype.render = function(delta) {
 	}
 
 	const renderTanq = (tanq) => {
-		let image = window.loader.get('tanqs');
-
-		// identify image based on direction
-		let spriteOffset = spriteFromDirection(tanq.direction);
-		ctx.drawImage(image, // image
-		              (8 * 32) * tanq.owner + (spriteOffset * 32), // source x
-		              0, // source y
-		              32, // source width
-		              36, // source height
-		              this.offset.x + tanq.location.x - 16, // target x
-		              this.offset.y + tanq.location.y - 16, // target y
-		              32, // target width
-		              36); // target height
-
-		if (drawBoundingBoxes)
+		if (tanq.location)
 		{
-			ctx.beginPath();
-			ctx.arc(tanq.location.x, tanq.location.y, 16, 0, 2 * Math.PI);
-			ctx.closePath();
-			ctx.stroke();
+			let image = window.loader.get('tanqs');
+
+			// identify image based on direction
+			let spriteOffset = spriteFromDirection(tanq.direction);
+			ctx.drawImage(image, // image
+			              (8 * 32) * tanq.owner + (spriteOffset * 32), // source x
+			              0, // source y
+			              32, // source width
+			              36, // source height
+			              this.offset.x + tanq.location.x - 16, // target x
+			              this.offset.y + tanq.location.y - 16, // target y
+			              32, // target width
+			              36); // target height
+
+			if (tanq.shield)
+			{
+				let shieldGfx = window.loader.get('shield');
+				ctx.drawImage(shieldGfx,
+					0,
+					0,
+					32,
+					36,
+					this.offset.x + tanq.location.x - 16,
+					this.offset.y + tanq.location.y - 16,
+					32,
+					36);
+			}
+
+			if (drawBoundingBoxes)
+			{
+				ctx.beginPath();
+				ctx.arc(tanq.location.x, tanq.location.y, 16, 0, 2 * Math.PI);
+				ctx.closePath();
+				ctx.stroke();
+			}
 		}
 	};
 
@@ -297,6 +323,19 @@ Game.prototype.render = function(delta) {
 		}
 	}
 
+	const renderPowerUp = (powerUp) => {
+		let image = window.loader.get('powerup');
+		ctx.drawImage(image, // image
+		              0, // source x
+		              0, // source y
+		              30, // source width
+		              30, // source height
+		              this.offset.x + powerUp.location.x, // target x
+		              this.offset.y + powerUp.location.y, // target y
+		              30, // target width
+		              30); // target height
+	}
+
 	ctx.save();
 
 	if (drawBoundingBoxes)
@@ -316,6 +355,11 @@ Game.prototype.render = function(delta) {
 			case 'bullet':
 			{
 				renderBullet(o);
+				break;
+			}
+			case 'powerup':
+			{
+				renderPowerUp(o);
 				break;
 			}
 		}
