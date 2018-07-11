@@ -16,13 +16,15 @@ app.use(express.static('public'));
 http.listen(8080, function() {
 	console.log("Listening on port 8080");
 
-	let singleton = utilities.instanceSingleton('tanq.game', Game, io);
-	const game = singleton.instance;
+	setTimeout(function() {
+		let singleton = utilities.instanceSingleton('tanq.game', Game, io);
+		const game = singleton.instance;
 
-	io.on('connection', (socket) => {
-		console.log("Connection established");
-		game.connected(socket);
-	});
+		io.on('connection', (socket) => {
+			console.log("Connection established");
+			game.connected(socket);
+		});
 
-	game.run();
+		game.run();
+	}, process.env.NODE_DEBUG === '1' ? 5000 : 0);
 });

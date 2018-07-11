@@ -178,7 +178,7 @@ Game.prototype.render = function(delta) {
 	renderPlayerStatistics(this.players[3], this.canvas.width, 22); // 4
 	ctx.restore();
 
-	var drawBoundingBoxes = false;
+	var drawBoundingBoxes = true;
 
 	let map = this.level.map;
 	let tileSize = this.level.tileSize;
@@ -257,6 +257,32 @@ Game.prototype.render = function(delta) {
 		return spriteOffset;
 	}
 
+	const renderBounds = (polygon) => {
+		if (drawBoundingBoxes && polygon)
+		{
+			ctx.beginPath();
+
+			if (polygon.type === 'circle')
+			{
+				ctx.arc(this.offset.x + polygon.pos.x, this.offset.y + polygon.pos.y, polygon.r, 0, 2 * Math.PI);
+			}
+			else if (polygon.type === 'polygon')
+			{
+				ctx.moveTo(this.offset.x + polygon.pos.x, this.offset.y + polygon.pos.y);
+
+				polygon.points.reverse().forEach((point, index) => {
+					ctx.lineTo(this.offset.x + polygon.pos.x + point.x, this.offset.y + polygon.pos.y + point.y);
+				});
+				// ctx.rect(bullet.location.x-6, bullet.location.y-6, 12, 12);
+				// ctx.closePath();
+				// ctx.stroke();
+			}
+
+			ctx.closePath();
+			ctx.stroke();
+		}
+	}
+
 	const renderTanq = (tanq) => {
 		if (tanq.location)
 		{
@@ -288,13 +314,7 @@ Game.prototype.render = function(delta) {
 					36);
 			}
 
-			if (drawBoundingBoxes)
-			{
-				ctx.beginPath();
-				ctx.arc(tanq.location.x, tanq.location.y, 16, 0, 2 * Math.PI);
-				ctx.closePath();
-				ctx.stroke();
-			}
+			renderBounds(tanq.polygon);
 		}
 	};
 
@@ -310,17 +330,7 @@ Game.prototype.render = function(delta) {
 		              12, // target width
 		              16); // target height
 
-		if (drawBoundingBoxes)
-		{
-			// ctx.beginPath();
-			// ctx.arc(bullet.location.x, bullet.location.y, 6, 0, 2 * Math.PI);
-			// ctx.closePath();
-			// ctx.stroke();
-			ctx.beginPath();
-			ctx.rect(bullet.location.x-6, bullet.location.y-6, 12, 12);
-			ctx.closePath();
-			ctx.stroke();
-		}
+		renderBounds(bullet.polygon);
 	}
 
 	const renderPowerUp = (powerUp) => {
@@ -334,6 +344,8 @@ Game.prototype.render = function(delta) {
 		              this.offset.y + powerUp.location.y, // target y
 		              30, // target width
 		              30); // target height
+
+		renderBounds(powerUp.polygon);
 	}
 
 	ctx.save();
@@ -385,20 +397,10 @@ Game.prototype.render = function(delta) {
 	if (drawBoundingBoxes)
 	{
 		// collision map
-		this.level.blocks.forEach((b, i) => {
-			// var start = b.points.shift();
-
-			if (b)
+		this.level.blocks.forEach((block, i) => {
+			if (block)
 			{
-				// console.log(b);
-				ctx.beginPath();
-				ctx.lineWidth = 1;
-				ctx.moveTo(b.pos.x, b.pos.y);
-				b.points.forEach((p) => {
-					ctx.lineTo(b.pos.x + p.x, b.pos.y + p.y);
-				});
-				ctx.closePath();
-				ctx.stroke();
+				renderBounds(block.polygon);
 			}
 		});
 	}
