@@ -31,111 +31,45 @@ window.loader = new Loader();
 
 
 const Keyboard = function() {
+	this.keys = {};
+	this.mapping = {
+		ArrowUp: 'MoveUp',
+		ArrowDown: 'MoveDown',
+		ArrowLeft: 'MoveLeft',
+		ArrowRight: 'MoveRight',
+		KeyW: 'MoveUp',
+		KeyS: 'MoveDown',
+		KeyA: 'MoveLeft',
+		KeyD: 'MoveRight',
+		ControlRight: 'Fire',
+		Space: 'Fire'
+	};
 }
 
-Keyboard.prototype.init = function(socket) {
+Keyboard.prototype.init = function() {
 	var direction = { x: 0, y: 0 };
 	window.addEventListener('keydown', (event) => {
-		// console.log("keydown", event);
-		var change = false;
-		switch (event.key)
-		{
-			case 'ArrowUp':
-			{
-				if (direction.y !== -1)
-				{
-					direction.y = -1;
-					change = true;
-				}
-				break;
-			}
-			case 'ArrowDown':
-			{
-				if (direction.y !== 1)
-				{
-					direction.y = 1;
-					change = true;
-				}
-				break;
-			}
-			case 'ArrowLeft':
-			{
-				if (direction.x !== -1)
-				{
-					direction.x = -1;
-					change = true;
-				}
-				break;
-			}
-			case 'ArrowRight':
-			{
-				if (direction.x !== 1)
-				{
-					direction.x = 1;
-					change = true;
-				}
-				break;
-			}
-			case ' ':
-			{
-				socket.emit('fire');
-				break;
-			}
-		}
-
-		if (change)
-		{
-			socket.emit('move', direction);
-		}
+		this.keys[event.code] = true;
 	});
 	window.addEventListener('keyup', (event) => {
-		// console.log("keyup", event);
-		var change = false;
-		switch (event.key)
-		{
-			case 'ArrowUp':/*
-			{
-				if (direction.y !== 0)
-				{
-					direction.y = 0;
-					change = true;
-				}
-				break;
-			}*/
-			case 'ArrowDown':
-			{
-				if (direction.y !== 0)
-				{
-					direction.y = 0;
-					change = true;
-				}
-				break;
-			}
-			case 'ArrowLeft':/*
-			{
-				if (direction.x !== -1)
-				{
-					direction.x = -1;
-					change = true;
-				}
-				break;
-			}*/
-			case 'ArrowRight':
-			{
-				if (direction.x !== 0)
-				{
-					direction.x = 0;
-					change = true;
-				}
-				break;
-			}
-		}
+		delete this.keys[event.code];
+	});
+}
 
-		if (change)
+Keyboard.prototype.reset = function() {
+	this.keys = {};
+}
+
+Keyboard.prototype.resolve = function() {
+	let result = {};
+	Object.keys(this.keys).map((key) => {
+		if (this.mapping[key])
 		{
-			socket.emit('move', direction);
+			result[this.mapping[key]] = true;
 		}
 	});
+
+	return result;
 }
 
 window.keyboard = new Keyboard();

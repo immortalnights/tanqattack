@@ -4,10 +4,17 @@ const Game = function(canvas) {
 	this.canvas = canvas;
 	this.ctx = canvas.getContext('2d');
 
+	window.addEventListener('blur', function(event) {
+		window.keyboard.reset();
+	});
+
+	this.offset = { x: 0, y: 46 }
+
+	let self = this;
 	this.canvas.addEventListener('mousedown', function(event) {
 		var rect = this.getBoundingClientRect();
-		var x = event.clientX - rect.left;
-		var y = event.clientY - rect.top;
+		var x = event.clientX - rect.left - self.offset.x;
+		var y = event.clientY - rect.top - self.offset.y;
 		console.log("x: " + x + " y: " + y);
 	});
 }
@@ -19,7 +26,6 @@ Game.prototype.start = function() {
 	this.animations = [];
 	this._lastTick = 0;
 	this._debugTimer = 0;
-	this.offset = { x: 0, y: 46 }
 
 	var deferred = this.load();
 
@@ -67,26 +73,32 @@ Game.prototype._begin = function() {
 	// spawn a new actor
 	this.socket.on('spawn', (actor) => {
 		console.log("Actor spawned", actor);
-
-		if (actor.type === 'explosion')
-		{
-			let anim = new Animation(window.loader.get('bulletexplosion'), 20, 18, 7);
-			anim.location = actor.location;
-			anim.location.x = actor.location.x;
-			anim.location.y = actor.location.y;
-			anim.play(0.5, false);
-			this.animations.push(anim);
-		}
-		else
-		{
-			this.objs.push(actor);
-		}
+		this.objs.push(actor);
 	});
 
 	// destroy a new actor
 	this.socket.on('destroy', (actor) => {
 		console.log("Actor destroyed", actor);
 		// this.objs.push();
+
+		if (actor.type === 'tanq')
+		{
+			let anim = new Animation(window.loader.get('tanqexplosion'), 65, 65, 10);
+			anim.location = {};
+			anim.location.x = actor.location.x;
+			anim.location.y = actor.location.y;
+			anim.play(0.5, false);
+			this.animations.push(anim);
+		}
+		else if (actor.type === 'bullet')
+		{
+			let anim = new Animation(window.loader.get('bulletexplosion'), 20, 18, 7);
+			anim.location = {};
+			anim.location.x = actor.location.x;
+			anim.location.y = actor.location.y;
+			anim.play(0.5, false);
+			this.animations.push(anim);
+		}
 	});
 
 	// update all actors (TODO update scores)
@@ -115,6 +127,7 @@ Game.prototype._begin = function() {
 Game.prototype.load = function() {
 	return [window.loader.load('tilemap', '/gfx/tileset.png'),
 	  window.loader.load('tanqs', '/gfx/tanqs.png'),
+	  window.loader.load('tanqexplosion', '/gfx/tanqexplosion.png'),
 	  window.loader.load('bullets', '/gfx/bullets.png'),
 	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png'),
 	  window.loader.load('shield', '/gfx/shield.png'),
@@ -135,6 +148,48 @@ Game.prototype.tick = function(delta) {
 }
 
 Game.prototype.update = function(delta) {
+	const controller = window.keyboard.resolve();
+
+	const keys = Object.keys(controller);
+
+	// debug
+	// if (keys.length)
+	// {
+	// 	console.log(controller);
+	// }
+
+	let direction = { x: 0, y: 0 };
+	keys.forEach((control) => {
+		switch (control)
+		{
+			case 'MoveUp':
+			{
+				direction.y = -1;
+				break;
+			}
+			case 'MoveDown':
+			{
+				direction.y = 1;
+				break;
+			}
+			case 'MoveLeft':
+			{
+				direction.x = -1;
+				break;
+			}
+			case 'MoveRight':
+			{
+				direction.x = 1;
+				break;
+			}
+			case 'Fire':
+			{
+				this.socket.emit('fire');
+			}
+		}
+	});
+
+	this.socket.emit('move', direction);
 }
 
 Game.prototype.render = function(delta) {

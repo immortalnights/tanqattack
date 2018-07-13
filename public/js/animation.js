@@ -73,8 +73,8 @@
 			              0, // source y
 			              this.w, // source width
 			              this.h, // source height
-			              x - (this.w / 2), // target x
-			              x - (this.h / 2), // target y
+			              x - (this.w / 2),// / 2), // target x
+			              y - (this.h / 2), // target y
 			              this.w, // target width
 			              this.h); // target height
 		}
