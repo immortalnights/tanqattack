@@ -1,6 +1,8 @@
 'use strict';
 
-const Game = function(canvas) {
+import {Audio} from './audio.js';
+
+export default  function Game(canvas) {
 	this.canvas = canvas;
 	this.ctx = canvas.getContext('2d');
 
@@ -74,6 +76,11 @@ Game.prototype._begin = function() {
 	this.socket.on('spawn', (actor) => {
 		console.log("Actor spawned", actor);
 		this.objs.push(actor);
+
+		if (actor.type === 'bullet')
+		{
+			this.audio.fire.play();
+		}
 	});
 
 	// destroy a new actor
@@ -89,6 +96,8 @@ Game.prototype._begin = function() {
 			anim.location.y = actor.location.y;
 			anim.play(0.5, false);
 			this.animations.push(anim);
+
+			this.audio.tanqDestroyed.play();
 		}
 		else if (actor.type === 'bullet')
 		{
@@ -98,6 +107,11 @@ Game.prototype._begin = function() {
 			anim.location.y = actor.location.y;
 			anim.play(0.5, false);
 			this.animations.push(anim);
+
+			if (actor.hitTanq)
+			{
+				this.audio.tanqDamage.play();
+			}
 		}
 	});
 
@@ -125,13 +139,29 @@ Game.prototype._begin = function() {
 }
 
 Game.prototype.load = function() {
-	return [window.loader.load('tilemap', '/gfx/tileset.png'),
+	let deferred = [window.loader.load('tilemap', '/gfx/tileset.png'),
 	  window.loader.load('tanqs', '/gfx/tanqs.png'),
 	  window.loader.load('tanqexplosion', '/gfx/tanqexplosion.png'),
 	  window.loader.load('bullets', '/gfx/bullets.png'),
 	  window.loader.load('bulletexplosion', '/gfx/bulletexplosion.png'),
 	  window.loader.load('shield', '/gfx/shield.png'),
 	  window.loader.load('powerup', '/gfx/powerup.png')];
+
+	let self = this;
+	this.audio = {
+		fire: new Audio('fire.mp3'),
+		tanqPowerUp: new Audio('powerup_tanq.mp3'),
+		weaponPowerUp: new Audio('powerup_weapon.mp3'),
+		tanqDestroyed: new Audio('tanq_destroyed.mp3'),
+		tanqDamage: new Audio('tanq_hit.mp3')
+	};
+
+	for (let i in this.audio)
+	{
+		deferred.push(this.audio[i].load());
+	}
+
+	return deferred;
 }
 
 Game.prototype.tick = function(delta) {
