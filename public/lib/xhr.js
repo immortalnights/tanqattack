@@ -17,7 +17,7 @@ var xhr = (function(url) {
 			if (this.readyState == 4)
 			{
 				var responseValue;
-				if ('application/json' === this.getResponseHeader('Content-Type'))
+				if (-1 !== this.getResponseHeader('Content-Type').indexOf('application/json'))
 				{
 					try
 					{

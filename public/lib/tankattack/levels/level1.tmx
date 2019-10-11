@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" orientation="orthogonal" renderorder="right-down" width="20" height="15" tilewidth="32" tileheight="32" nextobjectid="89">
- <tileset firstgid="1" name="tileset3" tilewidth="32" tileheight="32" tilecount="40">
+<map version="1.0" tiledversion="1.1.5" orientation="orthogonal" renderorder="right-down" width="20" height="15" tilewidth="32" tileheight="32" infinite="0" nextobjectid="92">
+ <tileset firstgid="1" name="tileset3" tilewidth="32" tileheight="32" tilecount="40" columns="40">
   <image source="../../../gfx/tileset3.png" width="1280" height="32"/>
  </tileset>
- <imagelayer name="Image Layer 1" x="6" visible="0" opacity="0.2">
+ <imagelayer name="Image Layer 1" x="6" visible="0" opacity="0.2" offsetx="6" offsety="0">
   <image source="../../../gfx/complete_level_1.png"/>
  </imagelayer>
  <layer name="Tiles" width="20" height="15">
@@ -27,41 +27,41 @@
  </layer>
  <objectgroup name="Entities">
   <object id="55" name="A" type="Block" x="164.25" y="82.75">
-   <polygon points="0,0 55.5625,-0.6875 59.6875,3.3125 59.625,27.125 55.5625,31.1875 -0.25,31.3125 -4.1875,27.1875 -4.3125,3.3125"/>
+   <polygon points="-0.25,-0.75 55.75,-0.75 59.75,3.25 59.75,27.25 55.75,31.25 -0.25,31.25 -4.25,27.25 -4.25,3.25"/>
   </object>
   <object id="59" name="B" type="Block" x="420.125" y="82.125">
-   <polygon points="0,0 55.625,0 59.5,3.875 59.875,27.625 55.875,31.75 -0.25,31.75 -4.125,27.75 -4.125,4"/>
+   <polygon points="-0.125,-0.125 55.875,-0.125 59.875,3.875 59.875,27.875 55.875,31.875 -0.125,31.875 -4.125,27.875 -4.125,3.875"/>
   </object>
   <object id="71" name="c" type="Block" x="68.5" y="178.125">
-   <polygon points="0,0 87.125,-0.125 91.25,4.125 91.375,64 27.625,64 -0.375,63.5 -4.375,59.5 -4.5,3.875"/>
+   <polygon points="-0.5,-0.125 87.5,-0.125 91.5,3.875 91.5,63.875 27.625,64 -0.5,63.875 -4.5,59.875 -4.5,3.875"/>
   </object>
   <object id="77" name="d" type="Block" x="96" y="242.545">
-   <polygon points="0,0 64,-0.181818 64.1818,27.6364 59.8182,31.4545 4,31.4545 0.363636,27.4545"/>
+   <polygon points="0,-0.545 64,-0.545 64,27.455 60,31.455 4,31.455 0,27.455"/>
   </object>
   <object id="78" name="e" type="Block" x="227.818" y="178">
-   <polygon points="0,0 23.6364,0.181818 27.6364,4.18182 27.8182,92.1818 24,96 0.181818,96.3636 -3.63636,91.4545 -3.63636,4.36364"/>
+   <polygon points="0.182,0 24.182,0 28.182,4 28.182,92 24.182,96 0.182,96 -3.818,92 -3.818,4"/>
   </object>
   <object id="79" name="f" type="Block" x="292" y="178">
-   <polygon points="0,0 55.4545,0.181818 59.8182,4.36364 60,91.6364 55.6364,96 0.181818,96 -3.63636,90.9091 -3.81818,4.36364"/>
+   <polygon points="0,0 56,0 60,4 60,92 56,96 0,96 -4,92 -4,4"/>
   </object>
   <object id="80" name="g" type="Block" x="388" y="177.818">
-   <polygon points="0,0 24,0.363636 27.6364,4.36364 27.8182,92 23.8182,96 0,96.1818 -4.18182,91.6364 -3.81818,4.36364"/>
+   <polygon points="0,0.182 24,0.182 28,4.182 28,92.182 24,96.182 0,96.182 -4,92.182 -4,4.182"/>
   </object>
   <object id="81" name="h" type="Block" x="516.182" y="178">
-   <polygon points="-0.0625,-0.03125 55.7983,0.012171 59.787,4.04737 59.8664,31.9062 -4.17614,31.9009 -4.13068,4.08026"/>
+   <polygon points="-0.182,1 55.818,0 59.818,4 59.818,32 -4.182,32 -4.182,4"/>
   </object>
   <object id="82" name="i" type="Block" x="484.182" y="209.818">
-   <polygon points="-0.125,0.125 91.8608,0.150568 91.8693,60.1193 87.6364,64.1818 -0.363636,64.3636 -4.36364,59.8182 -4.36364,4.72727"/>
+   <polygon points="-0.182,0.182 91.818,0.182 91.818,60.182 87.818,64.182 -0.182,64.182 -4.182,60.182 -4.182,4.182"/>
   </object>
   <object id="83" name="j" type="Block" x="164.182" y="337.818">
-   <polygon points="0,0 55.0909,0.181818 59.8182,4.90909 59.8182,28.3636 55.8182,32 -0.181818,32 -4,27.8182 -4,4.54545"/>
+   <polygon points="-0.182,0.182 55.818,0.182 59.818,4.182 59.818,28.182 55.818,32.182 -0.182,32.182 -4.182,28.182 -4.182,4.182"/>
   </object>
   <object id="84" name="k" type="Block" x="420" y="338">
-   <polygon points="0,0 55.6364,0.181818 59.8182,4 59.8182,27.6364 55.8182,32 0.181818,31.8182 -3.45455,27.6364 -3.63636,4.36364"/>
+   <polygon points="0,0 56,0 60,4 60,28 56,32 0,32 -4,28 -4,4"/>
   </object>
-  <object id="85" name="Border1" type="Block" x="0" y="0" width="639.25" height="18"/>
-  <object id="86" name="Border2" type="Block" x="0.5" y="18" width="15" height="431"/>
-  <object id="87" name="Border3" type="Block" x="623.75" y="18.75" width="15.5" height="430.75"/>
-  <object id="88" name="Border4" type="Block" x="0" y="449.75" width="639.5" height="16"/>
+  <object id="85" name="Border1" type="Block" x="0" y="0" width="640" height="18"/>
+  <object id="86" name="Border2" type="Block" x="0" y="18" width="16" height="432"/>
+  <object id="87" name="Border3" type="Block" x="624" y="18" width="16" height="432"/>
+  <object id="88" name="Border4" type="Block" x="0" y="450" width="640" height="16"/>
  </objectgroup>
 </map>
