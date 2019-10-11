@@ -1,6 +1,7 @@
 'use strict';
 
 import {Audio} from './audio.js';
+import {Animation} from './animation.js';
 
 export default  function Game(canvas) {
 	this.canvas = canvas;

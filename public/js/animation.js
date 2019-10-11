@@ -1,7 +1,7 @@
-// require(function(define) {
-	'use strict';
+'use strict';
 
-	/*return*/ function Animation(image, w, h, frames)
+export class Animation {
+	constructor(image, w, h, frames)
 	{
 		this.image = image;
 		this.w = w;
@@ -12,12 +12,12 @@
 		this._running = false;
 	}
 
-	Animation.prototype.isRunning = function()
+	isRunning()
 	{
 		return this._running;
 	}
 
-	Animation.prototype.play = function(duration, repeat)
+	play(duration, repeat)
 	{
 		this._frame = 1;
 		this.duration = duration || 1;
@@ -34,14 +34,14 @@
 		// console.time('anim');
 	}
 
-	Animation.prototype.stop = function()
+	stop()
 	{
 		this._frame = 0;
 		this._running = false;
 		// console.timeEnd('anim');
 	}
 
-	Animation.prototype.frame = function(delta)
+	frame(delta)
 	{
 		if (this._running)
 		{
@@ -64,7 +64,7 @@
 		}
 	}
 
-	Animation.prototype.draw = function(ctx, x, y)
+	draw(ctx, x, y)
 	{
 		if (this._running)
 		{
@@ -79,5 +79,4 @@
 			              this.h); // target height
 		}
 	}
-
-// });
+}
